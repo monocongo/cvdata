@@ -89,7 +89,7 @@ def build_dataset(
         annotations_dir = os.path.join(dest_dir, class_label, annotation_format)
         os.makedirs(annotations_dir, exist_ok=True)
         image_class_directories[class_label] = {
-            "images_dir" : images_dir,
+            "images_dir": images_dir,
             "annotations_dir": annotations_dir,
         }
 
@@ -163,20 +163,20 @@ def download_images(
         config=botocore.config.Config(signature_version=botocore.UNSIGNED),
     )
 
+    # create an iterable list of function arguments
+    # that we'll map to the download function
+    download_args_list = []
+    for image_id in image_ids:
+        image_file_name = image_id + ".jpg"
+        download_args = {
+            "s3_client": s3_client,
+            "image_file_object_path": section + "/" + image_file_name,
+            "dest_file_path": os.path.join(images_directory, image_file_name),
+        }
+        download_args_list.append(download_args)
+
     # use a ThreadPoolExecutor to download the images in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-
-        # create an iterable list of function arguments
-        # that we'll map to the download function
-        download_args_list = []
-        for image_id in image_ids:
-            image_file_name = image_id + ".jpg"
-            download_args = {
-                "s3_client": s3_client,
-                "image_file_object_path": section + "/" + image_file_name,
-                "dest_file_path": os.path.join(images_directory, image_file_name),
-            }
-            download_args_list.append(download_args)
 
         # use the executor to map the download function to the iterable of arguments
         list(tqdm(executor.map(download_image, download_args_list),
@@ -204,28 +204,28 @@ def build_annotations(
         files are to be written
     """
 
+    # create an iterable list of function arguments
+    # that we'll map to the annotation builder function
+    build_args_list = []
+    for image_id in image_ids:
+
+        # get all bounding boxes in the image for the label
+        bboxes = bbox_groups.get_group(image_id)[['XMin', 'XMax', 'YMin', 'YMax']].values.tolist()
+
+        # build a dictionary of arguments for the build_annotation function
+        # that will be called by one of the process pool's worker processes
+        build_args = {
+            "annotation_format": annotation_format,
+            "bboxes": bboxes,
+            "class_label": class_label,
+            "image_id": image_id,
+            "images_dir": images_directory,
+            "annotations_dir": annotations_directory,
+        }
+        build_args_list.append(build_args)
+
     # use a ProcessPoolExecutor to download the images in parallel
     with concurrent.futures.ProcessPoolExecutor() as executor:
-
-        # create an iterable list of function arguments
-        # that we'll map to the annotation builder function
-        build_args_list = []
-        for image_id in image_ids:
-
-            # get all bounding boxes in the image for the label
-            bboxes = bbox_groups.get_group(image_id)[['XMin', 'XMax', 'YMin', 'YMax']].values.tolist()
-
-            # build a dictionary of arguments for the build_annotation function
-            # that will be called by one of the process pool's worker processes
-            build_args = {
-                "annotation_format": annotation_format,
-                "bboxes": bboxes,
-                "class_label": class_label,
-                "image_id": image_id,
-                "images_dir": images_directory,
-                "annotations_dir": annotations_directory,
-            }
-            build_args_list.append(build_args)
 
         # use the executor to map the build function to the iterable of arguments
         list(tqdm(executor.map(build_annotation, build_args_list),
