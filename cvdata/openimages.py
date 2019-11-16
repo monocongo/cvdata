@@ -35,6 +35,13 @@ _logger = logging.getLogger(__name__)
 def class_label_codes(
         class_labels: List[str],
 ) -> Dict:
+    """
+    Gets a dictionary that maps a list of OpenImages image class labels to their
+    corresponding image class label codes.
+
+    :param class_labels:
+    :return:
+    """
 
     # get the class descriptions CSV from OpenImages and read into a DataFrame
     classes_csv = "class-descriptions-boxable.csv"
@@ -52,14 +59,16 @@ def class_label_codes(
 
 
 # ------------------------------------------------------------------------------
-def download_dataset(
+def build_dataset(
         dest_dir: str,
         class_labels: List[str],
         annotation_format: str,
         exclusions_path: str,
 ) -> Dict:
     """
-    Downloads the
+    Builds a dataset of images and annotations for a specified list of OpenImages
+    image classes.
+
     :param dest_dir:
     :param class_labels:
     :param annotation_format:
@@ -80,7 +89,7 @@ def download_dataset(
         annotations_dir = os.path.join(dest_dir, class_label, annotation_format)
         os.makedirs(annotations_dir, exist_ok=True)
         image_class_directories[class_label] = {
-            "images_dir" : images_dir,
+            "images_dir": images_dir,
             "annotations_dir": annotations_dir,
         }
 
@@ -138,6 +147,15 @@ def download_images(
         section: str,
         images_directory: str,
 ):
+    """
+    Downloads a collection of images from OpenImages dataset.
+
+    :param image_ids: list of image IDs to download
+    :param section: split section (train, validation, or test) where the image
+        should be found
+    :param images_directory: destination directory where the image files are to
+        be written
+    """
 
     # we'll download the images from AWS S3 so we'll need a boto S3 client
     s3_client = boto3.client(
@@ -145,20 +163,20 @@ def download_images(
         config=botocore.config.Config(signature_version=botocore.UNSIGNED),
     )
 
+    # create an iterable list of function arguments
+    # that we'll map to the download function
+    download_args_list = []
+    for image_id in image_ids:
+        image_file_name = image_id + ".jpg"
+        download_args = {
+            "s3_client": s3_client,
+            "image_file_object_path": section + "/" + image_file_name,
+            "dest_file_path": os.path.join(images_directory, image_file_name),
+        }
+        download_args_list.append(download_args)
+
     # use a ThreadPoolExecutor to download the images in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-
-        # create an iterable list of function arguments
-        # that we'll map to the download function
-        download_args_list = []
-        for image_id in image_ids:
-            image_file_name = image_id + ".jpg"
-            download_args = {
-                "s3_client": s3_client,
-                "image_file_object_path": section + "/" + image_file_name,
-                "dest_file_path": os.path.join(images_directory, image_file_name),
-            }
-            download_args_list.append(download_args)
 
         # use the executor to map the download function to the iterable of arguments
         list(tqdm(executor.map(download_image, download_args_list),
@@ -174,29 +192,40 @@ def build_annotations(
         images_directory: str,
         annotations_directory: str,
 ):
+    """
+    Builds and saves annotations for a collection of images.
+
+    :param annotation_format:
+    :param image_ids:
+    :param bbox_groups:
+    :param class_label:
+    :param images_directory:
+    :param annotations_directory: destination directory where the annotation
+        files are to be written
+    """
+
+    # create an iterable list of function arguments
+    # that we'll map to the annotation builder function
+    build_args_list = []
+    for image_id in image_ids:
+
+        # get all bounding boxes in the image for the label
+        bboxes = bbox_groups.get_group(image_id)[['XMin', 'XMax', 'YMin', 'YMax']].values.tolist()
+
+        # build a dictionary of arguments for the build_annotation function
+        # that will be called by one of the process pool's worker processes
+        build_args = {
+            "annotation_format": annotation_format,
+            "bboxes": bboxes,
+            "class_label": class_label,
+            "image_id": image_id,
+            "images_dir": images_directory,
+            "annotations_dir": annotations_directory,
+        }
+        build_args_list.append(build_args)
 
     # use a ProcessPoolExecutor to download the images in parallel
     with concurrent.futures.ProcessPoolExecutor() as executor:
-
-        # create an iterable list of function arguments
-        # that we'll map to the annotation builder function
-        build_args_list = []
-        for image_id in image_ids:
-
-            # get all bounding boxes in the image for the label
-            bboxes = bbox_groups.get_group(image_id)[['XMin', 'XMax', 'YMin', 'YMax']].values.tolist()
-
-            # build a dictionary of arguments for the build_annotation function
-            # that will be called by one of the process pool's worker processes
-            build_args = {
-                "annotation_format": annotation_format,
-                "bboxes": bboxes,
-                "class_label": class_label,
-                "image_id": image_id,
-                "images_dir": images_directory,
-                "annotations_dir": annotations_directory,
-            }
-            build_args_list.append(build_args)
 
         # use the executor to map the build function to the iterable of arguments
         list(tqdm(executor.map(build_annotation, build_args_list),
@@ -205,7 +234,18 @@ def build_annotations(
 
 # ------------------------------------------------------------------------------
 def build_annotation(arguments: Dict):
+    """
+    Builds and saves an annotation file for an image.
 
+    :param arguments: dictionary containing the following arguments:
+        "bboxes": a list of bounding box lists with four elements: [xmin, ymin,
+            xmax, ymax]
+        "class_label": image class label (category)
+        "image_id": OpenImages image ID
+        "images_dir": directory containing the image
+        "annotations_dir": destination directory where the annotation file
+            should be written
+    """
     if arguments["annotation_format"] == "pascal":
 
         # write a PASCAL VOC file for this image
@@ -219,6 +259,9 @@ def build_annotation(arguments: Dict):
         )
 
     elif arguments["annotation_format"] == "darknet":
+        # TODO
+        pass
+    elif arguments["annotation_format"] == "kitti":
         # TODO
         pass
     else:
@@ -375,6 +418,16 @@ def to_pascal(
 
 # ------------------------------------------------------------------------------
 def download_image(arguments: Dict):
+    """
+    Downloads and saves an image file from the OpenImages dataset.
+
+    :param arguments: dictionary containing the following arguments:
+        "s3_client": an S3 client object
+        "image_file_object_path": the S3 object path corresponding to the image
+            file to be downloaded
+        "dest_file_path": destination directory where the image file should be
+            written
+    """
 
     with open(arguments["dest_file_path"], "wb") as dest_file:
         arguments["s3_client"].download_fileobj(
@@ -388,7 +441,7 @@ def download_image(arguments: Dict):
 if __name__ == "__main__":
     """
     Usage:
-    $ python openimages_fetch.py --base_dir /data/datasets/openimages \
+    $ python openimages.py --base_dir /data/datasets/openimages \
           --format pascal_dir --label Person
     """
     # parse the command line arguments
@@ -423,4 +476,4 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
-    download_dataset(args["base_dir"], args["label"], args["format"], args["exclusions"])
+    build_dataset(args["base_dir"], args["label"], args["format"], args["exclusions"])
