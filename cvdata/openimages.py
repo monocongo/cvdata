@@ -109,7 +109,11 @@ def download_dataset(
 
             # download the images
             _logger.info(f"Downloading {split_section} images for class \'{class_label}\'")
-            download_images(image_ids, split_section, images_dir)
+            download_images(
+                image_ids,
+                split_section,
+                image_class_directories[class_label]["images_dir"],
+            )
 
             # build the annotations
             _logger.info(
@@ -121,8 +125,8 @@ def download_dataset(
                 image_ids,
                 bbox_groups,
                 class_label,
-                images_dir,
-                annotations_dir,
+                image_class_directories[class_label]["images_dir"],
+                image_class_directories[class_label]["annotations_dir"],
             )
 
     return image_class_directories
