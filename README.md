@@ -11,3 +11,13 @@ $ python cvdata/openimages.py --label Handgun Shotgun Rifle --exclusions /home/j
 The above will save each image class in a separate subdirectory under the base 
 directory, with images in a subdirectory named "images" and the PASCAL VOC format 
 annotations in a subdirectory named "pascal".
+
+## Visualize annotations
+In order to visualize images and corresponding annotations use the script 
+`cvdata/visualize.py`. This script currently supports annotations in COCO (*.json), 
+Darknet (*.txt), KITTI (*.txt), and PASCAL VOC (*.xml) formats. It will display 
+bounding boxes and labels for all images/annotations in the specified images and 
+annotations directories. For example:
+```bash
+$ python cvdata/visualize.py --format pascal --images_dir /data/weapons/images --annotations_dir /data/weapons/pascal
+```
