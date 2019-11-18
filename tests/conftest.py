@@ -3,6 +3,7 @@ from distutils import dir_util
 
 import pytest
 
+
 @pytest.fixture
 def data_dir(tmpdir, request):
     """
