@@ -1,0 +1,23 @@
+<annotation>
+    <filename>test_image.jpg</filename>
+    <path>/tmp/test_image.jpg</path>
+    <source />
+    <database>Unknown</database>
+    <size><width>300</width>
+        <height>450</height>
+        <depth>3</depth>
+    </size>
+    <segmented>0</segmented>
+    <object>
+        <name>pistol</name>
+        <pose>Unspecified</pose>
+        <truncated>0</truncated>
+        <difficult>0</difficult>
+        <bndbox>
+            <xmin>1</xmin>
+            <ymin>1</ymin>
+            <xmax>298</xmax>
+            <ymax>271</ymax>
+        </bndbox>
+    </object>
+</annotation>
