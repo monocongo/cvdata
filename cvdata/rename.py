@@ -54,6 +54,10 @@ def rename_label_pascal(arguments: Dict):
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
 
+    # Usage:
+    # $ python rename.py --labels_dir /data/cvdata/pascal \
+    #   --old handgun --new firearm --format pascal
+
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
