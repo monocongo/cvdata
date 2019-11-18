@@ -30,7 +30,7 @@ setuptools.setup(
         "numpy",
         "pandas",
         "pillow",
-        "requests"
-        "tqdm"
+        "requests",
+        "tqdm",
     ],
 )
