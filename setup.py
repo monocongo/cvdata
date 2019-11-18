@@ -33,4 +33,7 @@ setuptools.setup(
         "requests",
         "tqdm",
     ],
+    tests_require=[
+        "pytest",
+    ]
 )
