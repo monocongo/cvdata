@@ -36,7 +36,7 @@ def rename_label_pascal(arguments: Dict):
     tree = ElementTree.parse(pascalxml_path)
 
     # remove extraneous newlines and whitespace from text elements
-    for element in tree.getiterator():
+    for element in tree.iter():
         if element.text:
             element.text = element.text.strip()
 
@@ -44,7 +44,7 @@ def rename_label_pascal(arguments: Dict):
     for obj in tree.iter("object"):
 
         name = obj.find("name")
-        if name and (name.text.strip() == arguments["old"]):
+        if (name is not None) and (name.text.strip() == arguments["old"]):
             name.text = arguments["new"]
 
     # write the annotation document back into the annotation file
@@ -88,8 +88,8 @@ if __name__ == "__main__":
         file_ext = ".txt"
         rename_function = rename_label_kitti
     elif args["format"] == "pascal":
-        file_ext = ".txt"
-        rename_function = rename_label_kitti
+        file_ext = ".xml"
+        rename_function = rename_label_pascal
     else:
         raise ValueError("Only KITTI and PASCAL annotation files are supported")
 
