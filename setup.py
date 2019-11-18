@@ -25,8 +25,8 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        "boto3"
-        "lxml"
+        "boto3",
+        "lxml",
         "numpy",
         "pandas",
         "pillow",
