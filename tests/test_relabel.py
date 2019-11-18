@@ -19,6 +19,8 @@ def test_relabel_kitti(
 ):
     """
     Test for the cvdata.relabel_kitti() function
+
+    :param data_dir: temporary directory into which test files will be loaded
     """
     kitti_file_name = "kitti_1.txt"
     kitti_file_path = str(data_dir.join(kitti_file_name))
@@ -66,6 +68,8 @@ def test_relabel_pascal(
 ):
     """
     Test for the cvdata.relabel_pascal() function
+
+    :param data_dir: temporary directory into which test files will be loaded
     """
     pascal_file_name = "pascal_1.xml"
     pascal_file_path = str(data_dir.join(pascal_file_name))
