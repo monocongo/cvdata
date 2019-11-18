@@ -4,6 +4,7 @@ import fileinput
 import logging
 import os
 from typing import Dict
+from xml.etree import ElementTree
 
 from tqdm import tqdm
 
@@ -30,8 +31,24 @@ def rename_label_kitti(arguments: Dict):
 # ------------------------------------------------------------------------------
 def rename_label_pascal(arguments: Dict):
 
-    # TODO
-    pass
+    # load the contents of the annotations file into an ElementTree
+    pascalxml_path = arguments["file_path"]
+    tree = ElementTree.parse(pascalxml_path)
+
+    # remove extraneous newlines and whitespace from text elements
+    for element in tree.getiterator():
+        if element.text:
+            element.text = element.text.strip()
+
+    # loop over all objects, renaming those that are relevant
+    for obj in tree.iter("object"):
+
+        name = obj.find("name")
+        if name and (name.text.strip() == arguments["old"]):
+            name.text = arguments["new"]
+
+    # write the annotation document back into the annotation file
+    tree.write(pascalxml_path)
 
 
 # ------------------------------------------------------------------------------
