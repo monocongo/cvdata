@@ -1,5 +1,6 @@
 import argparse
 import concurrent.futures
+import fileinput
 import logging
 import os
 from typing import Dict
@@ -29,7 +30,7 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def get_resized_image(
+def _get_resized_image(
         image: np.ndarray,
         new_width: int,
         new_height: int,
@@ -89,44 +90,89 @@ def get_resized_image(
 
 
 # ------------------------------------------------------------------------------
-def resize_image(arguments: Dict):
+def _resize_image(arguments: Dict):
+    """
+    Wrapper function to be used for mapping to an iterable of arguments that
+    will be passed to the resizing function.
 
-    image_file_name = arguments["file_id"] + arguments["image_ext"]
-    image_path = os.path.join(arguments["input_images_dir"], image_file_name)
+    :param arguments:
+    :return:
+    """
+
+    resize_image(
+        arguments["file_id"],
+        arguments["image_ext"],
+        arguments["annotation_ext"],
+        arguments["input_images_dir"],
+        arguments["input_annotations_dir"],
+        arguments["output_images_dir"],
+        arguments["output_annotations_dir"],
+        arguments["new_width"],
+        arguments["new_height"],
+        arguments["annotation_format"],
+    )
+
+
+# ------------------------------------------------------------------------------
+def resize_image(
+        file_id: str,
+        image_ext: str,
+        annotation_ext: str,
+        input_images_dir: str,
+        input_annotations_dir: str,
+        output_images_dir: str,
+        output_annotations_dir: str,
+        new_width: int,
+        new_height: int,
+        annotation_format: str,
+) -> int:
+    """
+    Resizes an image and its corresponding annotation.
+
+    :param file_id: file ID of the image and annotation files
+    :param image_ext: file extension of the image file
+    :param annotation_ext: file extension of the annotation file
+    :param input_images_dir: directory where image file is located
+    :param input_annotations_dir: directory where annotation file is located
+    :param output_images_dir: directory where the resized image file
+        should be written
+    :param output_annotations_dir: directory where the resized annotation file
+        should be written
+    :param new_width: new width to which the image should be resized
+    :param new_height: new height to which the image should be resized
+    :param annotation_format: "coco", "darknet", "kitti", or "pascal"
+    :return: 0 to indicate successful completion
+    """
 
     # read the image data into a numpy array and get the dimensions
+    image_file_name = file_id + image_ext
+    image_path = os.path.join(input_images_dir, image_file_name)
     image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
     original_height, original_width = image.shape[:2]
 
     # resize if necessary
-    if (original_width != arguments["new_width"]) or \
-            (original_height != arguments["new_height"]):
-        image, scale_x, scale_y = \
-            get_resized_image(
-                image,
-                arguments["new_width"],
-                arguments["new_height"],
-            )
+    if (original_width != new_width) or (original_height != new_height):
+        image, scale_x, scale_y = _get_resized_image(image, new_width, new_height)
     else:
         scale_x = scale_y = 1.0
 
     # write the scaled/padded image to file in the output directory
-    resized_image_path = os.path.join(arguments["output_images_dir"], image_file_name)
+    resized_image_path = os.path.join(output_images_dir, image_file_name)
     cv2.imwrite(resized_image_path, image)
 
-    annotation_file_name = arguments["file_id"] + arguments["annotation_ext"]
-    annotation_path = os.path.join(arguments["input_annotations_dir"], annotation_file_name)
+    annotation_file_name = file_id + annotation_ext
+    annotation_path = os.path.join(input_annotations_dir, annotation_file_name)
 
-    if arguments["annotation_format"] == "pascal":
+    if annotation_format == "pascal":
 
         tree = ElementTree.parse(annotation_path)
         root = tree.getroot()
 
         # update the image dimensions if they've changed
-        if arguments["new_width"] != original_width:
-            root.find("size").find("width").text = str(arguments["new_width"])
-        if arguments["new_height"] != original_height:
-            root.find("size").find("height").text = str(arguments["new_height"])
+        if new_width != original_width:
+            root.find("size").find("width").text = str(new_width)
+        if new_height != original_height:
+            root.find("size").find("height").text = str(new_height)
 
         # update any bounding boxes
         for bbox in root.iter("bndbox"):
@@ -138,8 +184,8 @@ def resize_image(arguments: Dict):
 
             # clip to one less pixel than the dimension size in
             # case the scaling takes us all the way to the edge
-            new_xmax = min((arguments["new_width"] - 1), int(int(xmax.text) * scale_x))
-            new_ymax = min((arguments["new_height"] - 1), int(int(ymax.text) * scale_y))
+            new_xmax = min((new_width - 1), int(int(xmax.text) * scale_x))
+            new_ymax = min((new_height - 1), int(int(ymax.text) * scale_y))
 
             xmin.text = str(int(int(xmin.text) * scale_x))
             ymin.text = str(int(int(ymin.text) * scale_y))
@@ -152,7 +198,48 @@ def resize_image(arguments: Dict):
             path.text = resized_image_path
 
         # write the updated XML into the annotations output directory
-        tree.write(os.path.join(arguments["output_annotations_dir"], annotation_file_name))
+        tree.write(os.path.join(output_annotations_dir, annotation_file_name))
+
+    elif annotation_format == "kitti":
+
+        def scale_line(
+                kitti_line: str,
+                width_new: int,
+                height_new: int,
+                x_scale: float,
+                y_scale: float,
+        ) -> str:
+
+            parts = kitti_line.rstrip("\r\n").split()
+            x_min, y_min, x_max, y_max = list(map(int, map(float, parts[4:8])))
+
+            # clip to one less pixel than the dimension size in
+            # case the scaling takes us all the way to the edge
+            xmin_new = str(int(x_min * x_scale))
+            ymin_new = str(int(y_min * y_scale))
+            xmax_new = str(min((width_new - 1), int(x_max * x_scale)))
+            ymax_new = str(min((height_new - 1), int(y_max * y_scale)))
+
+            parts[4:8] = xmin_new, ymin_new, xmax_new, ymax_new
+            return " ".join(parts)
+
+        output_annotation_path = \
+            os.path.join(output_annotations_dir, annotation_file_name)
+
+        if annotation_path == output_annotation_path:
+            # replace the bounding boxes in-place
+            with fileinput.FileInput(annotation_path, inplace=True) as file_input:
+                for line in file_input:
+                    print(scale_line(line, new_width, new_height, scale_x, scale_y))
+
+        else:
+            # read lines from the original, update the bounding box, and write to new file
+            with open(annotation_path, "r") as original_kitti_file, \
+                    open(output_annotation_path, "w") as new_kitti_file:
+                for line in original_kitti_file:
+                    new_kitti_file.write(scale_line(line, new_width, new_height, scale_x, scale_y))
+
+    return 0
 
 
 # ------------------------------------------------------------------------------
@@ -166,14 +253,17 @@ def resize_images(
         annotation_format: str,
 ):
     """
-    TODO
-    :param input_images_dir:
-    :param input_annotations_dir:
-    :param output_images_dir:
-    :param output_annotations_dir:
-    :param new_width:
-    :param new_height:
-    :param annotation_format:
+    Resizes all images and corresponding annotations located within the
+    specified directories.
+
+    :param input_images_dir: directory where image files are located
+    :param input_annotations_dir: directory where annotation files are located
+    :param output_images_dir: directory where resized image files should be written
+    :param output_annotations_dir: directory where resized annotation files
+        should be written
+    :param new_width: new width to which the image should be resized
+    :param new_height: new height to which the image should be resized
+    :param annotation_format: "coco", "darknet", "kitti", or "pascal"
     :return: the number of resized image/annotation files
     """
 
@@ -221,7 +311,7 @@ def resize_images(
         _logger.info("Resizing files")
 
         # use the executor to map the download function to the iterable of arguments
-        list(tqdm(executor.map(resize_image, resize_arguments_list),
+        list(tqdm(executor.map(_resize_image, resize_arguments_list),
                   total=len(resize_arguments_list)))
 
 
