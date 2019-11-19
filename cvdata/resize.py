@@ -239,6 +239,9 @@ def resize_image(
                 for line in original_kitti_file:
                     new_kitti_file.write(scale_line(line, new_width, new_height, scale_x, scale_y))
 
+    else:
+        raise ValueError(f"Unsupported annotation format: \'{annotation_format}\'")
+
     return 0
 
 
@@ -267,8 +270,8 @@ def resize_images(
     :return: the number of resized image/annotation files
     """
 
-    # only allow for PASCAL format
-    if annotation_format != "pascal":
+    # only allow for KITTI and PASCAL annotation formats
+    if annotation_format not in ["kitti", "pascal"]:
         raise ValueError(f"Unsupported annotation format: {annotation_format}")
     else:
         annotation_ext = _FORMAT_EXTENSIONS[annotation_format]
