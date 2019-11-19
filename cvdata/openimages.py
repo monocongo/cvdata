@@ -34,19 +34,23 @@ _logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 def class_label_codes(
         class_labels: List[str],
-        meta_dir: str = None,
+        csv_dir: str = None,
 ) -> Dict:
     """
     Gets a dictionary that maps a list of OpenImages image class labels to their
     corresponding image class label codes.
 
-    :param class_labels:
-    :return:
+    :param class_labels: image class labels for which we'll find corresponding
+        OpenImages image class codes
+    :param csv_dir: directory where we should look for the class descriptions
+        CSV file, and if not present download it into there for future use
+    :return: dictionary with the class labels mapped to their corresponding
+        OpenImages image class codes
     """
 
     classes_csv = "class-descriptions-boxable.csv"
 
-    if meta_dir is None:
+    if csv_dir is None:
 
         # get the class descriptions CSV from OpenImages and read into a DataFrame
         url = _OID_v5 + classes_csv
@@ -61,7 +65,7 @@ def class_label_codes(
     else:
 
         # download the class descriptions CSV file to the specified directory if not present
-        descriptions_csv_file_path = os.path.join(meta_dir, classes_csv)
+        descriptions_csv_file_path = os.path.join(csv_dir, classes_csv)
         if not os.path.exists(descriptions_csv_file_path):
 
             # get the annotations CSV for the section
@@ -93,26 +97,30 @@ def build_dataset(
         class_labels: List[str],
         annotation_format: str,
         exclusions_path: str,
-        meta_dir: str = None,
+        csv_dir: str = None,
 ) -> Dict:
     """
     Builds a dataset of images and annotations for a specified list of OpenImages
     image classes.
 
-    :param dest_dir:
-    :param class_labels:
-    :param annotation_format:
-    :param exclusions_path:
-    :param meta_dir:
+    :param dest_dir: base directory under which the images and annotations
+        will be stored
+    :param class_labels: list of OpenImages class labels we'll download
+    :param annotation_format: "coco", "darknet", "kitti", or "pascal"
+    :param exclusions_path: path to file containing file IDs to exclude from the
+        dataset (useful if there are files known to be problematic or invalid)
+    :param csv_dir: directory where we should look for the class descriptions
+        and annotations CSV files, and if not present download these files into
+        the directory for future use
     :return: images directory and annotations directory
     """
 
     # make the metadata directory if it's specified and doesn't exist
-    if meta_dir is not None:
-        os.makedirs(meta_dir, exist_ok=True)
+    if csv_dir is not None:
+        os.makedirs(csv_dir, exist_ok=True)
 
     # get the OpenImages image class codes for the specified class labels
-    label_codes = class_label_codes(class_labels, meta_dir)
+    label_codes = class_label_codes(class_labels, csv_dir)
 
     # build the directories for each class label
     image_class_directories = {}
@@ -143,7 +151,7 @@ def build_dataset(
 
         # get a dictionary of class labels to GroupByDataFrames
         # containing bounding box info grouped by image IDs
-        label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, meta_dir)
+        label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, csv_dir)
 
         for class_label in label_codes.keys():
 
@@ -310,7 +318,7 @@ def bounding_boxes(
         section: str,
         label_codes: Dict,
         exclusion_ids: Set[str],
-        meta_dir: str = None,
+        csv_dir: str = None,
 ) -> Dict:
     """
     Gets a pandas DataFrameGroupBy object containing bounding boxes for an image
@@ -320,12 +328,12 @@ def bounding_boxes(
     :param label_codes: dictionary with class labels mapped to the
         corresponding OpenImages-specific code of the image class
     :param exclusion_ids: file IDs that should be excluded
-    :param meta_dir
+    :param csv_dir
     :return: DataFrameGroupBy object with bounding box columns grouped by image IDs
     """
 
     bbox_csv_name = section + "-annotations-bbox.csv"
-    if meta_dir is None:
+    if csv_dir is None:
 
         # get the annotations CSV for the section
         url = _OID_v4 + section + "/" + bbox_csv_name
@@ -340,7 +348,7 @@ def bounding_boxes(
     else:
 
         # download the annotations CSV file to the specified directory if not present
-        bbox_csv_file_path = os.path.join(meta_dir, bbox_csv_name)
+        bbox_csv_file_path = os.path.join(csv_dir, bbox_csv_name)
         if not os.path.exists(bbox_csv_file_path):
             # get the annotations CSV for the section
             url = _OID_v4 + section + "/" + bbox_csv_name
@@ -499,7 +507,7 @@ if __name__ == "__main__":
     """
     Usage:
     $ python openimages.py --base_dir /data/datasets/openimages \
-          --format pascal --label Person --meta_dir /data/datasets/openimages
+          --format pascal --label Person --csv_dir /data/datasets/openimages
     """
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -532,12 +540,19 @@ if __name__ == "__main__":
              "the final dataset",
     )
     args_parser.add_argument(
-        "--meta_dir",
+        "--csv_dir",
         type=str,
         required=False,
-        help="path to directory where dataset metadata (annotations CSV, etc.) "
-             "should be read or downloaded for later use",
+        help="path to a directory where CSV files for the OpenImages dataset "
+             "metadata (annotations, descriptions, etc.) should be read and/or "
+             "downloaded into for later use",
     )
     args = vars(args_parser.parse_args())
 
-    build_dataset(args["base_dir"], args["label"], args["format"], args["exclusions"], args["meta_dir"])
+    build_dataset(
+        args["base_dir"],
+        args["label"],
+        args["format"],
+        args["exclusions"],
+        args["csv_dir"],
+    )
