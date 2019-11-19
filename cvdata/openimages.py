@@ -10,9 +10,10 @@ import boto3
 import botocore
 import lxml.etree as etree
 import pandas as pd
-import PIL.Image as Image
 import requests
 from tqdm import tqdm
+
+from cvdata.utils import image_dimensions
 
 # OpenImages URL locations
 _OID_v4 = "https://storage.googleapis.com/openimages/2018_04/"
@@ -153,7 +154,8 @@ def build_dataset(
         # containing bounding box info grouped by image IDs
         label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, csv_dir)
 
-        for class_label in label_codes.keys():
+        class_labels = list(label_codes.keys())
+        for label_index, class_label in enumerate(class_labels):
 
             # get the bounding boxes grouped by image and the collection of image IDs
             bbox_groups = label_bbox_groups[class_label]
@@ -176,10 +178,19 @@ def build_dataset(
                 annotation_format,
                 image_ids,
                 bbox_groups,
-                class_label,
+                class_labels,
+                label_index,
                 image_class_directories[class_label]["images_dir"],
                 image_class_directories[class_label]["annotations_dir"],
             )
+
+        if annotation_format == "darknet":
+            # write the class labels to a names file to allow
+            # for indexing the Darknet label numbers
+            darknet_object_names = os.path.join(dest_dir, "darknet_obj_names.txt")
+            with open(darknet_object_names, "w") as darknet_obj_names_file:
+                for label in class_labels:
+                    darknet_obj_names_file.write(f"{label}\n")
 
     return image_class_directories
 
@@ -231,7 +242,8 @@ def build_annotations(
         annotation_format: str,
         image_ids: List[str],
         bbox_groups: pd.core.groupby.DataFrameGroupBy,
-        class_label: str,
+        class_labels: List[str],
+        class_index: int,
         images_directory: str,
         annotations_directory: str,
 ):
@@ -241,8 +253,9 @@ def build_annotations(
     :param annotation_format:
     :param image_ids:
     :param bbox_groups:
-    :param class_label:
-    :param images_directory:
+    :param class_labels:
+    :param class_index:
+    :param images_directory: directory where the image files should be located
     :param annotations_directory: destination directory where the annotation
         files are to be written
     """
@@ -260,11 +273,15 @@ def build_annotations(
         build_args = {
             "annotation_format": annotation_format,
             "bboxes": bboxes,
-            "class_label": class_label,
             "image_id": image_id,
             "images_dir": images_directory,
             "annotations_dir": annotations_directory,
         }
+
+        if annotation_format == "pascal":
+            build_args["class_label"] = class_labels[class_index]
+        elif annotation_format == "darknet":
+            build_args["class_index"] = class_index
         build_args_list.append(build_args)
 
     # use a ProcessPoolExecutor to download the images in parallel
@@ -283,7 +300,7 @@ def build_annotation(arguments: Dict):
     :param arguments: dictionary containing the following arguments:
         "bboxes": a list of bounding box lists with four elements: [xmin, ymin,
             xmax, ymax]
-        "class_label": image class label (category)
+        "class_labels": list of image class labels (categories)
         "image_id": OpenImages image ID
         "images_dir": directory containing the image
         "annotations_dir": destination directory where the annotation file
@@ -302,8 +319,16 @@ def build_annotation(arguments: Dict):
         )
 
     elif arguments["annotation_format"] == "darknet":
-        # TODO
-        pass
+
+        # write a Darknet annotation file for this image
+        # using all bounding boxes in the image's group
+        to_darknet(
+            arguments["bboxes"],
+            arguments["class_index"],
+            arguments["image_id"],
+            arguments["images_dir"],
+            arguments["annotations_dir"],
+        )
     elif arguments["annotation_format"] == "kitti":
         # TODO
         pass
@@ -405,6 +430,147 @@ def bounding_boxes(
 
 
 # ------------------------------------------------------------------------------
+def to_darknet(
+        bboxes: List[List[float]],
+        label_index: int,
+        image_id: str,
+        images_dir: str,
+        darknet_dir: str,
+) -> str:
+    """
+    Writes a Darknet annotation file containing the bounding boxes for an image.
+
+    :param bboxes: iterable of lists of bounding box coordinates [xmin, xmax,
+        ymin, ymax]
+    :param label_index: class label index
+    :param image_id: image ID (should be the image's file name minus the file
+        extension ".jpg")
+    :param images_dir: directory where the image file is located
+    :param darknet_dir: directory where the PASCAL file should be written
+    :return: path to the Darknet annotation file
+    """
+
+    # get the images' dimensions
+    image_file_path = os.path.join(images_dir, image_id + ".jpg")
+    image_width, image_height, _ = image_dimensions(image_file_path)
+
+    # open the annotation file for writing bounding boxes one per line
+    darknet_file_path = os.path.join(darknet_dir, image_id + ".txt")
+    if os.path.exists(darknet_file_path):
+        # an annotation file already exists for this image so append to it
+        open_mode = "+a"
+    else:
+        # no annotation file exists yet for this image so create it
+        open_mode = "+w"
+    with open(darknet_file_path, open_mode) as darknet_file:
+
+        # for each bounding box get the corresponding center x and y
+        # as well as the bounding box's width and height in terms of
+        # a decimal fraction of the total image dimension
+        for bbox in bboxes:
+
+            # get the label index based on the annotation's object name
+            # find the bounding box's center X and Y, and width/height
+            bbox_min_x, bbox_max_x, bbox_min_y, bbox_max_y  = bbox
+            bbox_width = (bbox_max_x - bbox_min_x) * image_width
+            bbox_height = (bbox_max_y - bbox_min_y) * image_height
+            bbox_width_fraction = bbox_width / image_width
+            bbox_height_fraction = bbox_height / image_height
+            bbox_center_x = (bbox_min_x * image_width) + (bbox_width / 2)
+            bbox_center_y = (bbox_min_y * image_height) + (bbox_height / 2)
+            bbox_center_fraction_x = bbox_center_x / image_width
+            bbox_height_fraction_y = bbox_center_y / image_height
+
+            # make sure we haven't overshot too much, if not then clip
+            if bbox_width_fraction > 1.0:
+
+                if (bbox_width_fraction - 1.0) > 0.025:
+                    # we have a significant overshoot, something's off and
+                    # we probably can't fix it without looking into the issue
+                    # further so report it via the logger and skip
+                    _logger.warning(
+                        "Creation of Darknet annotation for image "
+                        f"{image_id} results in an invalid (too "
+                        "wide) width fraction",
+                    )
+                    continue
+
+                else:
+                    # clip to one
+                    bbox_width_fraction = 1.0
+
+            if bbox_width_fraction < 0.0:
+
+                if bbox_width_fraction < 0.025:
+                    # we have a significant overshoot, something's off and
+                    # we probably can't fix it without looking into the issue
+                    # further so report it via the logger and skip
+                    _logger.warning(
+                        "Creation of Darknet annotation for image "
+                        f"{image_id} results in an invalid ("
+                        "negative) width fraction",
+                    )
+                    continue
+
+                else:
+                    # clip to zero
+                    bbox_width_fraction = 0.0
+
+            if bbox_height_fraction > 1.0:
+
+                if (bbox_height_fraction - 1.0) > 0.025:
+                    # we have a significant overshoot, something's off and
+                    # we probably can't fix it without looking into the issue
+                    # further so report it via the logger and skip
+                    _logger.warning(
+                        "Creation of Darknet annotation for image "
+                        f"{image_id} results in an invalid ("
+                        "too tall) height fraction",
+                    )
+                    continue
+                else:
+                    # clip to 1.0
+                    bbox_height_fraction = 1.0
+
+            if bbox_height_fraction < 0.0:
+
+                if bbox_height_fraction < 0.025:
+                    # we have a significant overshoot, something's off and
+                    # we probably can't fix it without looking into the issue
+                    # further so report it via the logger and skip
+                    _logger.warning(
+                        "Creation of Darknet annotation for image "
+                        f"{image_id} results in an invalid ("
+                        "negative) height fraction",
+                    )
+                    continue
+
+                else:
+                    # clip to zero
+                    bbox_height_fraction = 0.0
+
+            if (bbox_width < 0.0) or (bbox_height < 0.0):
+                # something's off and we probably can't fix it without looking
+                # into the issue further so report it via the logger and skip
+                _logger.warning(
+                    "Creation of Darknet annotation for image "
+                    f"{image_id} results in an invalid ("
+                    "negative) width or height",
+                )
+                continue
+
+            # write the bounding box info into the file
+            darknet_file.write(
+                f"{label_index} {bbox_center_fraction_x} "
+                f"{bbox_height_fraction_y} "
+                f"{bbox_width_fraction} "
+                f"{bbox_height_fraction}\n",
+            )
+
+    return darknet_file_path
+
+
+# ------------------------------------------------------------------------------
 def to_pascal(
         bboxes: List[List[float]],
         label: str,
@@ -427,9 +593,7 @@ def to_pascal(
 
     # get the image dimensions
     image_path = os.path.join(images_dir, image_id + ".jpg")
-    image = Image.open(image_path)
-    img_width, img_height = image.size
-    img_depth = image.layers
+    img_width, img_height, img_depth = image_dimensions(image_path)
 
     normalized_image_path = os.path.normpath(image_path)
     folder_name, image_file_name = normalized_image_path.split(os.path.sep)[-2:]

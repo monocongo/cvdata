@@ -1,5 +1,24 @@
 import os
 
+import PIL.Image as Image
+
+
+# ------------------------------------------------------------------------------
+def image_dimensions(
+        image_file_path: str,
+) -> (int, int, int):
+    """
+    Gets an image's width, height, and depth dimensions.
+
+    :param image_file_path: absolute path to an image file
+    :return: the image's width, height, and depth
+    """
+
+    image = Image.open(image_file_path)
+    img_width, img_height = image.size
+    img_depth = image.layers
+    return img_width, img_height, img_depth
+
 
 # ------------------------------------------------------------------------------
 def matching_ids(
