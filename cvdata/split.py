@@ -149,23 +149,19 @@ def create_split_files(
 
 
 # ------------------------------------------------------------------------------
-def _split_files(
+def _relocate_files(
         copy_files: bool,
         file_ids: List[str],
-        annotation_paths: Dict,
-        annotations_dest_dir: str,
-        image_paths: Dict,
-        images_dest_dir: str,
+        file_paths: Dict,
+        dest_dir: str,
 ) -> int:
     """
     TODO
 
     :param copy_files: whether or not to copy the files (move files if false)
     :param file_ids: file IDs for annotation and image files to be copied/moved
-    :param annotation_paths: dictionary of file IDs to annotation file paths
-    :param annotations_dest_dir: destination directory for annotation files
-    :param image_paths: dictionary of file IDs to image file paths
-    :param images_dest_dir: destination directory for image files
+    :param file_paths: dictionary of file IDs to image file paths
+    :param dest_dir: destination directory for image files
     :return: 0 indicates success
     """
 
@@ -187,16 +183,101 @@ def _split_files(
             shutil.move(src_file_path, dest_file_path)
         return 0
 
-    # copy or move the image and annotation files into the destination directories
+    # copy or move the files into the destination directory
     for file_id in tqdm(file_ids):
-        relocate_file(copy_files, annotation_paths[file_id], annotations_dest_dir)
-        relocate_file(copy_files, image_paths[file_id], images_dest_dir)
+        relocate_file(copy_files, file_paths[file_id], dest_dir)
 
     return 0
 
 
 # ------------------------------------------------------------------------------
-def split_train_valid_test(split_arguments: Dict):
+def _relocate_files_dataset(
+        copy_files: bool,
+        file_ids: List[str],
+        annotation_paths: Dict,
+        annotations_dest_dir: str,
+        image_paths: Dict,
+        images_dest_dir: str,
+) -> int:
+    """
+    TODO
+
+    :param copy_files: whether or not to copy the files (move files if false)
+    :param file_ids: file IDs for annotation and image files to be copied/moved
+    :param annotation_paths: dictionary of file IDs to annotation file paths
+    :param annotations_dest_dir: destination directory for annotation files
+    :param image_paths: dictionary of file IDs to image file paths
+    :param images_dest_dir: destination directory for image files
+    :return: 0 indicates success
+    """
+
+    for paths, dest_dir in zip([annotation_paths, image_paths], [annotations_dest_dir, images_dest_dir]):
+        _relocate_files(copy_files, file_ids, paths, dest_dir)
+
+    return 0
+
+
+# ------------------------------------------------------------------------------
+def split_train_valid_test_images(split_arguments: Dict):
+
+    # create the training, validation, and testing
+    # directories if they don't already exist
+    os.makedirs(split_arguments["train_images_dir"], exist_ok=True)
+    os.makedirs(split_arguments["val_images_dir"], exist_ok=True)
+    os.makedirs(split_arguments["test_images_dir"], exist_ok=True)
+
+    # map the file IDs to their corresponding full paths
+    images = map_ids_to_paths(split_arguments["images_dir"], [".jpg", ".png"])
+    ids = set(images.keys())
+
+    # split the file IDs into training and validation lists
+    # get the split based on the number of matching IDs and split percentages
+    final_train_index = int(round(split_arguments["train_percentage"] * len(ids)))
+    final_valid_index = \
+        int(round((split_arguments["train_percentage"] +
+                   split_arguments["valid_percentage"]) * len(ids)
+                  )
+            )
+    random.shuffle(ids)
+    training_ids = ids[:final_train_index]
+    validation_ids = ids[final_train_index:final_valid_index]
+    testing_ids = ids[final_valid_index:]
+
+    # copy images and annotations into the training directories
+    _logger.info("Splitting files for the training set into "
+                 f"{split_arguments['train_images_dir']}")
+    _relocate_files(
+        split_arguments["copy_feature"],
+        training_ids,
+        images,
+        split_arguments["train_images_dir"]
+    )
+
+    # copy images and annotations into the validation directories
+    _logger.info("Splitting files for the validation set into "
+                 f"{split_arguments['val_images_dir']} "
+                 f"and {split_arguments['val_annotations_dir']}")
+    _relocate_files(
+        split_arguments["copy_feature"],
+        validation_ids,
+        images,
+        split_arguments["val_images_dir"]
+    )
+
+    # copy images and annotations into the testing directories
+    _logger.info("Splitting files for the testing set into "
+                 f"{split_arguments['test_images_dir']} "
+                 f"and {split_arguments['test_annotations_dir']}")
+    _relocate_files(
+        split_arguments["copy_feature"],
+        testing_ids,
+        images,
+        split_arguments["test_images_dir"]
+    )
+
+
+# ------------------------------------------------------------------------------
+def split_train_valid_test_dataset(split_arguments: Dict):
 
     # create the training, validation, and testing
     # directories if they don't already exist
@@ -234,7 +315,7 @@ def split_train_valid_test(split_arguments: Dict):
     _logger.info("Splitting files for the training set into "
                  f"{split_arguments['train_images_dir']} "
                  f"and {split_arguments['train_annotations_dir']}")
-    _split_files(
+    _relocate_files_dataset(
         split_arguments["copy_feature"],
         training_ids,
         annotations,
@@ -247,7 +328,7 @@ def split_train_valid_test(split_arguments: Dict):
     _logger.info("Splitting files for the validation set into "
                  f"{split_arguments['val_images_dir']} "
                  f"and {split_arguments['val_annotations_dir']}")
-    _split_files(
+    _relocate_files_dataset(
         split_arguments["copy_feature"],
         validation_ids,
         annotations,
@@ -260,7 +341,7 @@ def split_train_valid_test(split_arguments: Dict):
     _logger.info("Splitting files for the testing set into "
                  f"{split_arguments['test_images_dir']} "
                  f"and {split_arguments['test_annotations_dir']}")
-    _split_files(
+    _relocate_files_dataset(
         split_arguments["copy_feature"],
         testing_ids,
         annotations,
