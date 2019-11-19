@@ -54,7 +54,8 @@ def bbox_darknet(
     :param width: width of the corresponding image
     :param height: height of the corresponding image
     :return: list of bounding box dictionary objects with keys "label", "x",
-        "y", "w", and "h"
+        "y", "w", and "h", values are percentages between 0.0 and 1.0, and the X
+        and Y values are for the center of the box
     """
 
     boxes = []
@@ -241,14 +242,6 @@ def bbox_pascal(
 
 
 # ------------------------------------------------------------------------------
-def get_image_file_name(pascal_file_path: str) -> str:
-
-    tree = ElementTree.parse(pascal_file_path)
-    root = tree.getroot()
-    return root.find("filename").text
-
-
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
 
     # Visualize images with bounding boxes specified by corresponding annotations.
@@ -289,14 +282,10 @@ if __name__ == "__main__":
 
         count += 1
 
-        if args["format"] == "pascal":
-            # get the corresponding image file name from the annotation file
-            image_file_name = get_image_file_name(
-                os.path.join(args["annotations_dir"], annotation_file_name),
-            )
-        else:
-            # we assume each annotation shares the same base name as the corresponding image
-            image_file_name = os.path.splitext(annotation_file_name)[0] + ".jpg"
+        # we assume each annotation shares the same base name as the corresponding image
+        annotations_file_path = \
+            os.path.join(args["annotations_dir"], annotation_file_name)
+        image_file_name = os.path.splitext(annotation_file_name)[0] + ".jpg"
 
         # load the input image from disk to determine the dimensions
         image_file_path = \
@@ -310,8 +299,7 @@ if __name__ == "__main__":
 
         # read the bounding boxes from the annotation file
         bboxes = []
-        annotations_file_path = \
-            os.path.join(args["annotations_dir"], annotation_file_name)
+
         if args["format"] == "coco":
             if annotation_file_name.endswith(".json"):
                 bboxes = bbox_coco(annotations_file_path)
