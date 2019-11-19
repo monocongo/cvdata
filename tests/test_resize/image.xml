@@ -1,8 +1,7 @@
-<annotation><folder>Definitiva</folder>
- <filename>armas_135.jpg</filename>
- <path>/tmp/tmpygedczp5/handgun/images/armas_135.jpg</path>
+<annotation>
+ <filename>image.jpg</filename>
  <source />
- <database>Unknown</database>
+ <database>cvdata</database>
  <size><width>450</width>
   <height>322</height>
   <depth>3</depth>

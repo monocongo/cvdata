@@ -1,8 +1,7 @@
-<annotation><folder>Definitiva</folder>
- <filename>armas_135.jpg</filename>
- <path>/home/james/git/cvdata/tests/test_resize/resized/image.jpg</path>
+<annotation>
+ <filename>image.jpg</filename>
  <source />
- <database>Unknown</database>
+ <database>cvdata</database>
  <size><width>240</width>
   <height>720</height>
   <depth>3</depth>

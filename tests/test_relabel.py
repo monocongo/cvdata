@@ -4,6 +4,7 @@ from xml.etree import ElementTree
 import pytest
 
 from cvdata import relabel
+from tests.assert_utils import elements_equal, text_files_equal
 
 # ------------------------------------------------------------------------------
 # disable logging messages
@@ -108,49 +109,3 @@ def test_relabel_pascal(
         relabel.relabel_pascal(pascal_file_path, "don't care", 1)
         relabel.relabel_pascal(pascal_file_path, "don't care", 1.0)
         relabel.relabel_pascal(pascal_file_path, "don't care", True)
-
-
-# ------------------------------------------------------------------------------
-def elements_equal(e1, e2):
-    """
-    Utility function to compare Element objects.
-
-    From https://stackoverflow.com/a/24349916/85248
-
-    :param e1:
-    :param e2:
-    :return: True if equal, False if not
-    """
-
-    if e1.tag != e2.tag:
-        return False
-    if e1.text != e2.text:
-        return False
-    if e1.tail != e2.tail:
-        return False
-    if e1.attrib != e2.attrib:
-        return False
-    if len(e1) != len(e2):
-        return False
-    return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
-
-
-# ------------------------------------------------------------------------------
-def text_files_equal(
-        file_path_1: str,
-        file_path_2: str,
-):
-    """
-    Utility function to compare Element objects.
-
-    :param file_path_1:
-    :param file_path_2:
-    :return: True if equal, False if not
-    """
-    with open(file_path_1, "r") as file_1, \
-            open(file_path_2, "r") as file_2:
-        for line_1, line_2 in zip(file_1.readline(), file_2.readline()):
-            if line_1 != line_2:
-                return False
-
-    return True
