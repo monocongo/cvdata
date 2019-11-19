@@ -4,12 +4,13 @@ import logging
 import os
 from pathlib import Path
 import shutil
-from typing import Dict
+from typing import Dict, List
 from xml.etree import ElementTree
 
 import cv2
 from tqdm import tqdm
 
+from cvdata.split import split_train_valid_test_images
 from cvdata.utils import matching_ids
 
 
@@ -180,13 +181,64 @@ def pascal_to_kitti(
 
 
 # ------------------------------------------------------------------------------
+def bounding_box(
+        pascal_file_path: str,
+) -> List[Dict]:
+    # get a list of bounding boxes from a PASCAL VOC annotation file
+    # TODO
+    pass
+
+
+# ------------------------------------------------------------------------------
 def pascal_to_openimages(
         pascal_dir: str,
         images_dir: str,
         openimages_dir:str,
 ):
 
+    # get the file IDs for the matching image/annotation file pairs
     file_ids = matching_ids(pascal_dir, images_dir)
+
+    # create the destination directories for the image split subsets
+    openimages_train_dir = os.path.join(openimages_dir, "train")
+    openimages_valid_dir = os.path.join(openimages_dir, "valid")
+    openimages_test_dir = os.path.join(openimages_dir, "test")
+    os.makedirs(openimages_train_dir, exist_ok=True)
+    os.makedirs(openimages_valid_dir, exist_ok=True)
+    os.makedirs(openimages_test_dir, exist_ok=True)
+
+    # split the images into the OpenImages split subdirectories
+    split_arguments = {
+        "images_dir": images_dir,
+        "train_images_dir": openimages_train_dir,
+        "val_images_dir": openimages_valid_dir,
+        "test_images_dir": openimages_test_dir,
+        "train_percentage": 0.7,
+        "valid_percentage": 0.2,
+        "copy_feature": True,
+    }
+    split_train_valid_test_images(split_arguments)
+
+    # translate PASCAL annotations to corresponding lines in the OpenImages CSVs
+    for section in ["train", "valid", "test"]:
+
+        csv_file_path = \
+            os.path.join(openimages_dir, "sub-" + section + "-annotations-bbox.csv")
+        with open(csv_file_path, "w") as csv_file:
+            csv_file.write("ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName")
+            if section == "train":
+                split_images_dir = openimages_train_dir
+            elif section == "valid":
+                split_images_dir = openimages_valid_dir
+            else:
+                split_images_dir = openimages_test_dir
+            file_names = os.listdir(split_images_dir)
+            file_ids = [os.splitext(file_name)[0] for file_name in file_names]
+            for file_id in file_ids:
+                bbox = bounding_box(os.path.join(pascal_dir, file_id + ".xml"))
+                csv_file.write(f"{file_id},,,,{bbox['xmin']},{bbox['ymin']},{bbox['xmax']},{bbox['ymax']},,,,,,,{bbox['label']}")
+        # TODO
+        pass
 
 
 # ------------------------------------------------------------------------------
