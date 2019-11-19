@@ -1,5 +1,6 @@
 import argparse
 import concurrent.futures
+import fileinput
 import logging
 import os
 from typing import Dict
@@ -29,7 +30,7 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def get_resized_image(
+def _get_resized_image(
         image: np.ndarray,
         new_width: int,
         new_height: int,
@@ -151,7 +152,7 @@ def resize_image(
 
     # resize if necessary
     if (original_width != new_width) or (original_height != new_height):
-        image, scale_x, scale_y = get_resized_image(image, new_width, new_height)
+        image, scale_x, scale_y = _get_resized_image(image, new_width, new_height)
     else:
         scale_x = scale_y = 1.0
 
@@ -198,6 +199,45 @@ def resize_image(
 
         # write the updated XML into the annotations output directory
         tree.write(os.path.join(output_annotations_dir, annotation_file_name))
+
+    elif annotation_format == "kitti":
+
+        def scale_line(
+                kitti_line: str,
+                width_new: int,
+                height_new: int,
+                x_scale: float,
+                y_scale: float,
+        ) -> str:
+
+            parts = kitti_line.rstrip("\r\n").split()
+            x_min, y_min, x_max, y_max = list(map(int, map(float, parts[4:8])))
+
+            # clip to one less pixel than the dimension size in
+            # case the scaling takes us all the way to the edge
+            xmin_new = str(int(x_min * x_scale))
+            ymin_new = str(int(y_min * y_scale))
+            xmax_new = str(min((width_new - 1), int(x_max * x_scale)))
+            ymax_new = str(min((height_new - 1), int(y_max * y_scale)))
+
+            parts[4:8] = xmin_new, ymin_new, xmax_new, ymax_new
+            return " ".join(parts)
+
+        output_annotation_path = \
+            os.path.join(output_annotations_dir, annotation_file_name)
+
+        if annotation_path == output_annotation_path:
+            # replace the bounding boxes in-place
+            with fileinput.FileInput(annotation_path, inplace=True) as file_input:
+                for line in file_input:
+                    print(scale_line(line, new_width, new_height, scale_x, scale_y))
+
+        else:
+            # read lines from the original, update the bounding box, and write to new file
+            with open(annotation_path, "r") as original_kitti_file, \
+                    open(output_annotation_path, "w") as new_kitti_file:
+                for line in original_kitti_file:
+                    new_kitti_file.write(scale_line(line, new_width, new_height, scale_x, scale_y))
 
     return 0
 
