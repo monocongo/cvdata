@@ -34,27 +34,60 @@ _logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 def class_label_codes(
         class_labels: List[str],
+        csv_dir: str = None,
 ) -> Dict:
     """
     Gets a dictionary that maps a list of OpenImages image class labels to their
     corresponding image class label codes.
 
-    :param class_labels:
-    :return:
+    :param class_labels: image class labels for which we'll find corresponding
+        OpenImages image class codes
+    :param csv_dir: directory where we should look for the class descriptions
+        CSV file, and if not present download it into there for future use
+    :return: dictionary with the class labels mapped to their corresponding
+        OpenImages image class codes
     """
 
-    # get the class descriptions CSV from OpenImages and read into a DataFrame
     classes_csv = "class-descriptions-boxable.csv"
-    url = _OID_v5 + classes_csv
-    r = requests.get(url, allow_redirects=True)
-    df_classes = pd.read_csv(io.BytesIO(r.content), header=None)
 
+    if csv_dir is None:
+
+        # get the class descriptions CSV from OpenImages and read into a DataFrame
+        url = _OID_v5 + classes_csv
+        response = requests.get(url, allow_redirects=True)
+        if response.status_code != 200:
+            raise ValueError(
+                "Failed to get class descriptions information -- Invalid "
+                f"response (status code: {response.status_code}) from {url}",
+            )
+        df_classes = pd.read_csv(io.BytesIO(response.content), header=None)
+
+    else:
+
+        # download the class descriptions CSV file to the specified directory if not present
+        descriptions_csv_file_path = os.path.join(csv_dir, classes_csv)
+        if not os.path.exists(descriptions_csv_file_path):
+
+            # get the annotations CSV for the section
+            url = _OID_v5 + classes_csv
+            response = requests.get(url, allow_redirects=True)
+            if response.status_code != 200:
+                raise ValueError(
+                    "Failed to get class descriptions information -- Invalid "
+                    f"response (status code: {response.status_code}) from {url}",
+                )
+            with open(descriptions_csv_file_path, "wb") as descriptions_csv_file:
+                descriptions_csv_file.write(response.content)
+
+        df_classes = pd.read_csv(descriptions_csv_file_path, header=None)
+
+    # build dictionary of class labels to OpenImages class codes
     labels_to_codes = {}
     for class_label in class_labels:
         labels_to_codes[class_label.lower()] = \
             df_classes.loc[df_classes[1] == class_label].values[0][0]
 
-    # return the label's OpenImages code
+    # return the labels to OpenImages codes dictionary
     return labels_to_codes
 
 
@@ -64,20 +97,30 @@ def build_dataset(
         class_labels: List[str],
         annotation_format: str,
         exclusions_path: str,
+        csv_dir: str = None,
 ) -> Dict:
     """
     Builds a dataset of images and annotations for a specified list of OpenImages
     image classes.
 
-    :param dest_dir:
-    :param class_labels:
-    :param annotation_format:
-    :param exclusions_path:
+    :param dest_dir: base directory under which the images and annotations
+        will be stored
+    :param class_labels: list of OpenImages class labels we'll download
+    :param annotation_format: "coco", "darknet", "kitti", or "pascal"
+    :param exclusions_path: path to file containing file IDs to exclude from the
+        dataset (useful if there are files known to be problematic or invalid)
+    :param csv_dir: directory where we should look for the class descriptions
+        and annotations CSV files, and if not present download these files into
+        the directory for future use
     :return: images directory and annotations directory
     """
 
+    # make the metadata directory if it's specified and doesn't exist
+    if csv_dir is not None:
+        os.makedirs(csv_dir, exist_ok=True)
+
     # get the OpenImages image class codes for the specified class labels
-    label_codes = class_label_codes(class_labels)
+    label_codes = class_label_codes(class_labels, csv_dir)
 
     # build the directories for each class label
     image_class_directories = {}
@@ -108,7 +151,7 @@ def build_dataset(
 
         # get a dictionary of class labels to GroupByDataFrames
         # containing bounding box info grouped by image IDs
-        label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids)
+        label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, csv_dir)
 
         for class_label in label_codes.keys():
 
@@ -275,6 +318,7 @@ def bounding_boxes(
         section: str,
         label_codes: Dict,
         exclusion_ids: Set[str],
+        csv_dir: str = None,
 ) -> Dict:
     """
     Gets a pandas DataFrameGroupBy object containing bounding boxes for an image
@@ -284,19 +328,40 @@ def bounding_boxes(
     :param label_codes: dictionary with class labels mapped to the
         corresponding OpenImages-specific code of the image class
     :param exclusion_ids: file IDs that should be excluded
+    :param csv_dir
     :return: DataFrameGroupBy object with bounding box columns grouped by image IDs
     """
 
-    # get the annotations CSV for the section
     bbox_csv_name = section + "-annotations-bbox.csv"
-    url = _OID_v4 + section + "/" + bbox_csv_name
-    response = requests.get(url, allow_redirects=True)
-    if response.status_code != 200:
-        raise ValueError(
-            f"Failed to get bounding box information for split section {section} "
-            f"-- Invalid response (status code: {response.status_code}) from {url}",
-        )
-    df_images = pd.read_csv(io.BytesIO(response.content))
+    if csv_dir is None:
+
+        # get the annotations CSV for the section
+        url = _OID_v4 + section + "/" + bbox_csv_name
+        response = requests.get(url, allow_redirects=True)
+        if response.status_code != 200:
+            raise ValueError(
+                f"Failed to get bounding box information for split section {section} "
+                f"-- Invalid response (status code: {response.status_code}) from {url}",
+            )
+        df_images = pd.read_csv(io.BytesIO(response.content))
+
+    else:
+
+        # download the annotations CSV file to the specified directory if not present
+        bbox_csv_file_path = os.path.join(csv_dir, bbox_csv_name)
+        if not os.path.exists(bbox_csv_file_path):
+            # get the annotations CSV for the section
+            url = _OID_v4 + section + "/" + bbox_csv_name
+            response = requests.get(url, allow_redirects=True)
+            if response.status_code != 200:
+                raise ValueError(
+                    f"Failed to get bounding box information for split section {section} "
+                    f"-- Invalid response (status code: {response.status_code}) from {url}",
+                )
+            with open(bbox_csv_file_path, "wb") as annotations_file:
+                annotations_file.write(response.content)
+
+        df_images = pd.read_csv(bbox_csv_file_path)
 
     # remove any rows which are identified to be excluded
     if exclusion_ids and (len(exclusion_ids) > 0):
@@ -442,7 +507,7 @@ if __name__ == "__main__":
     """
     Usage:
     $ python openimages.py --base_dir /data/datasets/openimages \
-          --format pascal_dir --label Person
+          --format pascal --label Person --csv_dir /data/datasets/openimages
     """
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -474,6 +539,20 @@ if __name__ == "__main__":
         help="path to file containing file IDs (one per line) to exclude from "
              "the final dataset",
     )
+    args_parser.add_argument(
+        "--csv_dir",
+        type=str,
+        required=False,
+        help="path to a directory where CSV files for the OpenImages dataset "
+             "metadata (annotations, descriptions, etc.) should be read and/or "
+             "downloaded into for later use",
+    )
     args = vars(args_parser.parse_args())
 
-    build_dataset(args["base_dir"], args["label"], args["format"], args["exclusions"])
+    build_dataset(
+        args["base_dir"],
+        args["label"],
+        args["format"],
+        args["exclusions"],
+        args["csv_dir"],
+    )
