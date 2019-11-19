@@ -33,13 +33,15 @@ def pascal_png_to_jpg(
 
     for file_name in tqdm(os.listdir(images_dir)):
         file_id, extension = os.path.splitext(file_name)
-        if extension[1:].strip().lower() == "png":
+        if extension[1:].strip().lower() == ".png":
+            # convert the image from PNG to JPG
             jpg_file_path = os.path.join(images_dir, file_id + ".jpg")
             png_file_name = file_id + ".png"
             png_file_path = os.path.join(images_dir, png_file_name)
             img = cv2.imread(png_file_path)
             cv2.imwrite(jpg_file_path, img)
 
+            # update the filename and path elements to reflect the new file type
             annotation_path = os.path.join(pascal_dir, file_id + ".xml")
             tree = ElementTree.parse(annotation_path)
             root = tree.getroot()
@@ -178,6 +180,28 @@ def pascal_to_kitti(
 
 
 # ------------------------------------------------------------------------------
+def pascal_to_openimages(
+        pascal_dir: str,
+        images_dir: str,
+        openimages_dir:str,
+):
+
+    file_ids = matching_ids(pascal_dir, images_dir)
+
+
+# ------------------------------------------------------------------------------
+def openimages_to_kitti():
+    # TODO
+    pass
+
+
+# ------------------------------------------------------------------------------
+def openimages_png_to_jpg():
+    # TODO
+    pass
+
+
+# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     """
     Usage: PASCAL to KITTI
@@ -187,7 +211,7 @@ if __name__ == "__main__":
         --in_format pascal --out_format kitti \
         --kitti_ids_file file_ids.txt
         
-    Usage: PASCAL to TFRecord
+    Usage: PASCAL to OpenImages
     $ python convert.py --annotations_dir ~/datasets/handgun/annotations/pascal \
         --images_dir ~/datasets/handgun/images \
         --out_dir ~/datasets/handgun/openimages \
@@ -237,22 +261,31 @@ if __name__ == "__main__":
         choices=format_choices,
         help="format of output annotations",
     )
-    args_parser.add_argument(
-        "--labels",
-        required=False,
-        type=str,
-        nargs='+',
-        help="list of object class labels",
-    )
     args = vars(args_parser.parse_args())
 
     if args["in_format"] == "pascal":
         if args["out_format"] == "kitti":
             pascal_to_kitti(args["annotations_dir"], args["images_dir"], args["out_dir"], args["kitti_ids_file"])
         elif args["out_format"] == "openimages":
-            pascal_to_openimages(args["annotations_dir"], args["images_dir"], args["out_dir"], )
+            pascal_to_openimages(args["annotations_dir"], args["images_dir"], args["out_dir"])
         elif args["out_format"] == "pascal":
-            pascal_png_to_jpg(args["annotations_dir"], args["images_dir"], )
+            # if going from PASCAL to PASCAL then we're actually
+            # converting the corresponding images from PNG to JPG
+            pascal_png_to_jpg(args["annotations_dir"], args["images_dir"])
+        else:
+            raise ValueError(
+                "Unsupported format conversion: "
+                f"{args['in_format']} to {args['out_format']}",
+            )
+    elif args["in_format"] == "openimages":
+        if args["out_format"] == "kitti":
+            openimages_to_kitti(args["annotations_dir"], args["images_dir"], args["out_dir"], args["kitti_ids_file"])
+        elif args["out_format"] == "pascal":
+            pascal_to_openimages(args["annotations_dir"], args["images_dir"], args["out_dir"])
+        elif args["out_format"] == "openimages":
+            # if going from OpenImages to OpenImages then we're actually
+            # converting the corresponding images from PNG to JPG
+            openimages_png_to_jpg(args["annotations_dir"], args["images_dir"])
         else:
             raise ValueError(
                 "Unsupported format conversion: "
