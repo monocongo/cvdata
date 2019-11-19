@@ -1,0 +1,21 @@
+<annotation><folder>Definitiva</folder>
+ <filename>armas_135.jpg</filename>
+ <path>/tmp/tmpygedczp5/handgun/images/armas_135.jpg</path>
+ <source />
+ <database>Unknown</database>
+ <size><width>450</width>
+  <height>322</height>
+  <depth>3</depth>
+ </size>
+ <segmented>0</segmented>
+ <object><name>firearm</name>
+  <pose>Unspecified</pose>
+  <truncated>0</truncated>
+  <difficult>0</difficult>
+  <bndbox><xmin>222</xmin>
+   <ymin>139</ymin>
+   <xmax>271</xmax>
+   <ymax>194</ymax>
+  </bndbox>
+ </object>
+</annotation>

@@ -14,6 +14,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
+    python_requires=">=3.0, <3.8",
     packages=[
         "cvdata",
     ],
@@ -28,6 +29,7 @@ setuptools.setup(
         "boto3",
         "lxml",
         "numpy",
+        "opencv-contrib-python-nonfree",
         "pandas",
         "pillow",
         "requests",
