@@ -201,55 +201,83 @@ def pascal_to_openimages(
         pascal_dir: str,
         images_dir: str,
         openimages_dir: str,
+        split: str = None,
 ):
 
-    # create the destination directories for the image split subsets
-    openimages_train_dir = os.path.join(openimages_dir, "train")
-    openimages_valid_dir = os.path.join(openimages_dir, "validation")
-    openimages_test_dir = os.path.join(openimages_dir, "test")
-    os.makedirs(openimages_train_dir, exist_ok=True)
-    os.makedirs(openimages_valid_dir, exist_ok=True)
-    os.makedirs(openimages_test_dir, exist_ok=True)
+    def csv_from_pascal(
+            csv_file_path: str,
+            images_directory: str,
+            pascal_directory: str,
+    ):
 
-    # split the images into the OpenImages split subdirectories
-    split_arguments = {
-        "images_dir": images_dir,
-        "train_images_dir": openimages_train_dir,
-        "val_images_dir": openimages_valid_dir,
-        "test_images_dir": openimages_test_dir,
-        "train_percentage": 0.7,
-        "valid_percentage": 0.2,
-        "copy_feature": True,
-    }
-    split_train_valid_test_images(split_arguments)
-
-    # translate PASCAL annotations to corresponding lines in the OpenImages CSVs
-    for section in ["train", "validation", "test"]:
-
-        csv_file_path = \
-            os.path.join(openimages_dir, "sub-" + section + "-annotations-bbox.csv")
         with open(csv_file_path, "w") as csv_file:
             csv_file.write(
                 "ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,"
                 "IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName\n",
             )
-            if section == "train":
-                split_images_dir = openimages_train_dir
-            elif section == "valid":
-                split_images_dir = openimages_valid_dir
-            else:
-                split_images_dir = openimages_test_dir
-            file_names = os.listdir(split_images_dir)
+            file_names = os.listdir(images_directory)
             file_ids = [os.path.splitext(file_name)[0] for file_name in file_names]
             for file_id in file_ids:
                 bboxes = bounding_boxes_pascal(
-                    os.path.join(pascal_dir, file_id + ".xml"),
+                    os.path.join(pascal_directory, file_id + ".xml"),
                 )
                 for bbox in bboxes:
                     csv_file.write(
                         f"{file_id},,,,{bbox['xmin']},{bbox['xmax']},"
                         f"{bbox['ymin']},{bbox['ymax']},,,,,,,{bbox['label']}\n",
                     )
+
+    copy_image_files = True
+
+    if split is not None:
+
+        # create the destination directories for the image split subsets
+        openimages_train_dir = os.path.join(openimages_dir, "train")
+        openimages_valid_dir = os.path.join(openimages_dir, "validation")
+        openimages_test_dir = os.path.join(openimages_dir, "test")
+        os.makedirs(openimages_train_dir, exist_ok=True)
+        os.makedirs(openimages_valid_dir, exist_ok=True)
+        os.makedirs(openimages_test_dir, exist_ok=True)
+
+        # split the images into the OpenImages split subdirectories
+        train_percentage, valid_percentage, _ = split.split(":")
+        split_arguments = {
+            "images_dir": images_dir,
+            "train_images_dir": openimages_train_dir,
+            "val_images_dir": openimages_valid_dir,
+            "test_images_dir": openimages_test_dir,
+            "train_percentage": train_percentage,
+            "valid_percentage": valid_percentage,
+            "copy_feature": copy_image_files,
+        }
+        split_train_valid_test_images(split_arguments)
+
+        # translate PASCAL annotations to corresponding lines in the OpenImages CSVs
+        for section in ["train", "validation", "test"]:
+
+            csv_file_path = \
+                os.path.join(openimages_dir, "sub-" + section + "-annotations-bbox.csv")
+            if section == "train":
+                split_images_dir = openimages_train_dir
+            elif section == "valid":
+                split_images_dir = openimages_valid_dir
+            else:
+                split_images_dir = openimages_test_dir
+            csv_from_pascal(csv_file_path, split_images_dir, pascal_dir)
+
+    else:
+
+        # copy or move the image files into the OpenImages directory
+        dest_images_dir = os.path.join(openimages_dir, "images")
+        if copy_image_files:
+            shutil.copy2(images_dir, dest_images_dir)
+        else:
+            shutil.move(images_dir, dest_images_dir)
+
+        # write the annotations into the OpenImages CSV
+        csv_file_path = \
+            os.path.join(openimages_dir, "annotations-bbox.csv")
+        csv_from_pascal(csv_file_path, dest_images_dir, pascal_dir)
 
 
 # ------------------------------------------------------------------------------
@@ -346,9 +374,20 @@ if __name__ == "__main__":
 
     if args["in_format"] == "pascal":
         if args["out_format"] == "kitti":
-            pascal_to_kitti(args["annotations_dir"], args["images_dir"], args["out_dir"], args["kitti_ids_file"])
+            pascal_to_kitti(
+                args["annotations_dir"],
+                args["images_dir"],
+                args["out_dir"],
+                args["kitti_ids_file"],
+                args["split"],
+            )
         elif args["out_format"] == "openimages":
-            pascal_to_openimages(args["annotations_dir"], args["images_dir"], args["out_dir"])
+            pascal_to_openimages(
+                args["annotations_dir"],
+                args["images_dir"],
+                args["out_dir"],
+                args["split"],
+            )
         else:
             raise ValueError(
                 "Unsupported format conversion: "
@@ -356,9 +395,20 @@ if __name__ == "__main__":
             )
     elif args["in_format"] == "openimages":
         if args["out_format"] == "kitti":
-            openimages_to_kitti(args["annotations_dir"], args["images_dir"], args["out_dir"], args["kitti_ids_file"])
+            openimages_to_kitti(
+                args["annotations_dir"],
+                args["images_dir"],
+                args["out_dir"],
+                args["kitti_ids_file"],
+                args["split"],
+            )
         elif args["out_format"] == "pascal":
-            openimages_to_pascal(args["annotations_dir"], args["images_dir"], args["out_dir"])
+            openimages_to_pascal(
+                args["annotations_dir"],
+                args["images_dir"],
+                args["out_dir"],
+                args["split"],
+            )
         else:
             raise ValueError(
                 "Unsupported format conversion: "
