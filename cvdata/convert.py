@@ -209,23 +209,37 @@ def pascal_to_openimages(
             images_directory: str,
             pascal_directory: str,
     ):
-
+        bbox_file_ids = []
         with open(csv_file_path, "w") as csv_file:
             csv_file.write(
                 "ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,"
                 "IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName\n",
             )
-            file_names = os.listdir(images_directory)
-            file_ids = [os.path.splitext(file_name)[0] for file_name in file_names]
+            file_ids = matching_ids(pascal_directory, images_directory, ".xml", ".jpg")
             for file_id in file_ids:
                 bboxes = bounding_boxes_pascal(
                     os.path.join(pascal_directory, file_id + ".xml"),
                 )
-                for bbox in bboxes:
-                    csv_file.write(
-                        f"{file_id},,,,{bbox['xmin']},{bbox['xmax']},"
-                        f"{bbox['ymin']},{bbox['ymax']},,,,,,,{bbox['label']}\n",
-                    )
+                if len(bboxes):
+                    bbox_file_ids.append(file_id)
+                    for bbox in bboxes:
+                        csv_file.write(
+                            f"{file_id},,,,{bbox['xmin']},{bbox['xmax']},"
+                            f"{bbox['ymin']},{bbox['ymax']},,,,,,,{bbox['label']}\n",
+                        )
+
+        # return list of image file IDs that are included in the CSV
+        return set(bbox_file_ids)
+
+    def remove_invalid_files(
+            valid_file_ids: List[str],
+            directory: str,
+    ):
+        # go through the files in the images directory and remove any that
+        # aren't included in the list of file IDs included in the CSV
+        for name in os.listdir(directory):
+            if os.path.splitext(name)[0] not in valid_file_ids:
+                os.remove(os.path.join(directory, name))
 
     copy_image_files = True
 
@@ -240,7 +254,7 @@ def pascal_to_openimages(
         os.makedirs(openimages_test_dir, exist_ok=True)
 
         # split the images into the OpenImages split subdirectories
-        train_percentage, valid_percentage, _ = split.split(":")
+        train_percentage, valid_percentage, _ = map(float, split.split(":"))
         split_arguments = {
             "images_dir": images_dir,
             "train_images_dir": openimages_train_dir,
@@ -263,21 +277,34 @@ def pascal_to_openimages(
                 split_images_dir = openimages_valid_dir
             else:
                 split_images_dir = openimages_test_dir
-            csv_from_pascal(csv_file_path, split_images_dir, pascal_dir)
+            file_ids = csv_from_pascal(csv_file_path, split_images_dir, pascal_dir)
+
+            # go through the files in the images directory and remove any that
+            # aren't included in the list of file IDs included in the CSV
+            remove_invalid_files(file_ids, split_images_dir)
 
     else:
 
         # copy or move the image files into the OpenImages directory
-        dest_images_dir = os.path.join(openimages_dir, "images")
         if copy_image_files:
-            shutil.copy2(images_dir, dest_images_dir)
+            relocate = shutil.copy2
         else:
-            shutil.move(images_dir, dest_images_dir)
+            relocate = shutil.move
+        dest_images_dir = os.path.join(openimages_dir, "images")
+        os.makedirs(images_dir, exist_ok=True)
+        for file_name in os.listdir(images_dir):
+            if file_name.endswith(".jpg"):
+                image_file_path = os.path.join(images_dir, file_name)
+                relocate(image_file_path, dest_images_dir)
 
         # write the annotations into the OpenImages CSV
         csv_file_path = \
             os.path.join(openimages_dir, "annotations-bbox.csv")
-        csv_from_pascal(csv_file_path, dest_images_dir, pascal_dir)
+        file_ids = csv_from_pascal(csv_file_path, dest_images_dir, pascal_dir)
+
+        # go through the files in the images directory and remove any that
+        # aren't included in the list of file IDs included in the CSV
+        remove_invalid_files(file_ids, dest_images_dir)
 
 
 # ------------------------------------------------------------------------------
