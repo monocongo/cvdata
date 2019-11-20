@@ -7,7 +7,6 @@ import shutil
 from typing import Dict, List
 from xml.etree import ElementTree
 
-import cv2
 from tqdm import tqdm
 
 from cvdata.split import split_train_valid_test_images
@@ -201,11 +200,8 @@ def bounding_boxes_pascal(
 def pascal_to_openimages(
         pascal_dir: str,
         images_dir: str,
-        openimages_dir:str,
+        openimages_dir: str,
 ):
-
-    # get the file IDs for the matching image/annotation file pairs
-    file_ids = matching_ids(pascal_dir, images_dir, ".xml", ".jpg")
 
     # create the destination directories for the image split subsets
     openimages_train_dir = os.path.join(openimages_dir, "train")
@@ -257,13 +253,24 @@ def pascal_to_openimages(
 
 
 # ------------------------------------------------------------------------------
-def openimages_to_kitti():
+def openimages_to_kitti(
+        annotations_csv: str,
+        images_dir: str,
+        out_dir: str,
+        kitti_ids_file: str,
+        split: str = None,
+):
     # TODO
     pass
 
 
 # ------------------------------------------------------------------------------
-def openimages_to_pascal():
+def openimages_to_pascal(
+        annotations_csv: str,
+        images_dir: str,
+        out_dir: str,
+        split: str = None,
+):
     # TODO
     pass
 
