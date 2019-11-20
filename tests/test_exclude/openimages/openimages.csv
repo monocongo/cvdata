@@ -1,0 +1,4 @@
+ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName
+exclude_1,freeform,/m/06nrc,1,0.0,1.0,0.060957000000000004,1.0,0,0,0,0,0,/m/06nrc,Shotgun
+4fa8e06fc7b99ae4,freeform,/m/0gxl3,1,0.5567949999999999,0.9999889999999999,0.277047,0.7618689999999999,0,0,0,0,0,/m/0gxl3,Handgun
+exclude_2,freeform,/m/06nrc,1,0.0,1.0,0.060957000000000004,1.0,0,0,0,0,0,/m/06nrc,Shotgun
