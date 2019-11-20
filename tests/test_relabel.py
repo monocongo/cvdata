@@ -96,7 +96,7 @@ def test_relabel_pascal(
     )
 
     # confirm that invalid argument types raise an error
-    with pytest.raises(ValueError) as ex_info:
+    with pytest.raises(ValueError):
         relabel.relabel_pascal(None, "don't care", "don't care")
         relabel.relabel_pascal(pascal_file_path, None, "don't care")
         relabel.relabel_pascal(pascal_file_path, "don't care", None)
