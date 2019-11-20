@@ -8,6 +8,8 @@ from xml.etree import ElementTree
 import cv2
 import pandas as pd
 
+from cvdata.common import FORMAT_CHOICES as format_choices
+
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
 logging.basicConfig(
@@ -249,8 +251,8 @@ if __name__ == "__main__":
     #
     # Usage:
     #
-    # $ python <this_script.py> --images_dir /home/ubuntu/data/handgun/images \
-    #       --annotations_dir /home/ubuntu/data/handgun/annotations/coco \
+    # $ python <this_script.py> --images /home/ubuntu/data/handgun/images \
+    #       --annotations /home/ubuntu/data/handgun/annotations/coco \
     #       --format coco
     #
 
@@ -272,7 +274,7 @@ if __name__ == "__main__":
         "--format",
         type=str,
         required=True,
-        choices=["coco", "darknet", "kitti", "openimages", "pascal"],
+        choices=format_choices,
         help="annotation format",
     )
     args = vars(args_parser.parse_args())
@@ -330,7 +332,7 @@ if __name__ == "__main__":
 
             # load the input image from disk to determine the dimensions
             image_file_path = \
-                os.path.join(args["images_dir"], image_file_name)
+                os.path.join(args["images"], image_file_name)
             image = cv2.imread(image_file_path)
             try:
                 image_height, image_width = image.shape[:2]

@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
+from cvdata.common import FORMAT_CHOICES as format_choices
 from cvdata.utils import matching_ids
 
 _FORMAT_EXTENSIONS = {
@@ -364,7 +365,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=["pascal"],
+        choices=format_choices,
         # choices=["darknet", "coco", "kitti", "pascal", "tfrecord"],
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
