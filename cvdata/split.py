@@ -228,7 +228,7 @@ def split_train_valid_test_images(split_arguments: Dict):
 
     # map the file IDs to their corresponding full paths
     images = map_ids_to_paths(split_arguments["images_dir"], [".jpg", ".png"])
-    ids = set(images.keys())
+    ids = list(images.keys())
 
     # split the file IDs into training and validation lists
     # get the split based on the number of matching IDs and split percentages
@@ -255,8 +255,7 @@ def split_train_valid_test_images(split_arguments: Dict):
 
     # copy images and annotations into the validation directories
     _logger.info("Splitting files for the validation set into "
-                 f"{split_arguments['val_images_dir']} "
-                 f"and {split_arguments['val_annotations_dir']}")
+                 f"{split_arguments['val_images_dir']}")
     _relocate_files(
         split_arguments["copy_feature"],
         validation_ids,
@@ -266,8 +265,7 @@ def split_train_valid_test_images(split_arguments: Dict):
 
     # copy images and annotations into the testing directories
     _logger.info("Splitting files for the testing set into "
-                 f"{split_arguments['test_images_dir']} "
-                 f"and {split_arguments['test_annotations_dir']}")
+                 f"{split_arguments['test_images_dir']}")
     _relocate_files(
         split_arguments["copy_feature"],
         testing_ids,
