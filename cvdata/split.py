@@ -184,7 +184,7 @@ def _relocate_files(
         return 0
 
     # copy or move the files into the destination directory
-    for file_id in tqdm(file_ids):
+    for file_id in file_ids:
         relocate_file(copy_files, file_paths[file_id], dest_dir)
 
     return 0
