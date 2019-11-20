@@ -197,7 +197,7 @@ def pascal_to_openimages(
 ):
 
     # get the file IDs for the matching image/annotation file pairs
-    file_ids = matching_ids(pascal_dir, images_dir)
+    file_ids = matching_ids(pascal_dir, images_dir, ".xml", ".jpg")
 
     # create the destination directories for the image split subsets
     openimages_train_dir = os.path.join(openimages_dir, "train")
@@ -233,12 +233,10 @@ def pascal_to_openimages(
             else:
                 split_images_dir = openimages_test_dir
             file_names = os.listdir(split_images_dir)
-            file_ids = [os.splitext(file_name)[0] for file_name in file_names]
+            file_ids = [os.path.splitext(file_name)[0] for file_name in file_names]
             for file_id in file_ids:
                 bbox = bounding_box(os.path.join(pascal_dir, file_id + ".xml"))
-                csv_file.write(f"{file_id},,,,{bbox['xmin']},{bbox['ymin']},{bbox['xmax']},{bbox['ymax']},,,,,,,{bbox['label']}")
-        # TODO
-        pass
+                csv_file.write(f"{file_id},,,,{bbox['xmin']},{bbox['xmax']},{bbox['ymin']},{bbox['ymax']},,,,,,,{bbox['label']}\n")
 
 
 # ------------------------------------------------------------------------------
@@ -264,7 +262,7 @@ if __name__ == "__main__":
         --kitti_ids_file file_ids.txt
         
     Usage: PASCAL to OpenImages
-    $ python convert.py --annotations_dir ~/datasets/handgun/annotations/pascal \
+    $ python convert.py --annotations_dir ~/datasets/handgun/pascal \
         --images_dir ~/datasets/handgun/images \
         --out_dir ~/datasets/handgun/openimages \
         --in_format pascal --out_format openimages
