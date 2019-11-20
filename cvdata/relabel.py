@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 
 from tqdm import tqdm
 
+from cvdata.common import FORMAT_CHOICES as format_choices
 
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
@@ -153,8 +154,8 @@ if __name__ == "__main__":
         required=True,
         type=str,
         default="kitti",
-        choices=["coco", "darknet", "kitti", "pascal"],
-        help="format of annotations to be renamed",
+        choices=format_choices,
+        help="annotation format of the annotations to be relabeled",
     )
     args = vars(args_parser.parse_args())
 

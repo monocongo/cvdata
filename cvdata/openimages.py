@@ -13,6 +13,7 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
+from cvdata.common import FORMAT_CHOICES as format_choices
 from cvdata.utils import image_dimensions
 
 # OpenImages URL locations
@@ -686,7 +687,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=["darknet", "coco", "kitti", "pascal", "tfrecord"],
+        choices=format_choices,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     args_parser.add_argument(

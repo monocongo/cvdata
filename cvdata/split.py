@@ -7,7 +7,7 @@ import random
 import shutil
 from typing import Dict, List
 
-from tqdm import tqdm
+from cvdata.common import FORMAT_CHOICES as format_choices
 
 _FORMAT_EXTENSIONS = {
     "coco": ".json",
@@ -451,7 +451,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=["darknet", "coco", "kitti", "pascal", ],
+        choices=format_choices,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     # add an option that defaults to copying files, otherwise files will be moved

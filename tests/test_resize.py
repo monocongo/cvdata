@@ -21,7 +21,7 @@ def test_resize(
         data_dir,
 ):
     """
-    Test for the cvdata.resize() function
+    Test for the cvdata.resize.resize() function
 
     :param data_dir: temporary directory into which test files will be loaded
     """
