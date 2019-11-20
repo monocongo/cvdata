@@ -181,12 +181,51 @@ def pascal_to_kitti(
 
 
 # ------------------------------------------------------------------------------
-def bounding_box(
+def bounding_boxes_pascal(
         pascal_file_path: str,
 ) -> List[Dict]:
-    # get a list of bounding boxes from a PASCAL VOC annotation file
-    # TODO
-    pass
+    """
+    Get a list of bounding boxes from a PASCAL VOC annotation file.
+
+    :param pascal_file_path:
+    :return: list of bounding box dictionaries, with each dictionary containing
+        five elements: "label" (string), "xmin", "ymin", "xmax", and "ymax" (ints)
+    """
+
+    boxes = []
+
+    # load the contents of the annotations file into an ElementTree
+    tree = ElementTree.parse(pascal_file_path)
+
+    for obj in tree.iter("object"):
+
+        label = obj.find("name").text
+        bndbox = obj.find("bndbox")
+        bbox_min_x = int(float(bndbox.find("xmin").text))
+        bbox_min_y = int(float(bndbox.find("ymin").text))
+        bbox_max_x = int(float(bndbox.find("xmax").text))
+        bbox_max_y = int(float(bndbox.find("ymax").text))
+
+        # make sure we don't have wonky values with mins > maxs
+        if (bbox_min_x >= bbox_max_x) or (bbox_min_y >= bbox_max_y):
+
+            # report the issue via log message
+            _logger.warning("Bounding box minimum(s) greater than maximum(s)")
+
+            # skip this box since it's not clear how to fix it
+            continue
+
+        # include this box in the list we'll return
+        box = {
+            "label": label,
+            "xmin": bbox_min_x,
+            "ymin": bbox_min_y,
+            "xmax": bbox_max_x,
+            "ymax": bbox_max_y,
+        }
+        boxes.append(box)
+
+    return boxes
 
 
 # ------------------------------------------------------------------------------
@@ -225,7 +264,10 @@ def pascal_to_openimages(
         csv_file_path = \
             os.path.join(openimages_dir, "sub-" + section + "-annotations-bbox.csv")
         with open(csv_file_path, "w") as csv_file:
-            csv_file.write("ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName")
+            csv_file.write(
+                "ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,"
+                "IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName\n",
+            )
             if section == "train":
                 split_images_dir = openimages_train_dir
             elif section == "valid":
@@ -235,8 +277,14 @@ def pascal_to_openimages(
             file_names = os.listdir(split_images_dir)
             file_ids = [os.path.splitext(file_name)[0] for file_name in file_names]
             for file_id in file_ids:
-                bbox = bounding_box(os.path.join(pascal_dir, file_id + ".xml"))
-                csv_file.write(f"{file_id},,,,{bbox['xmin']},{bbox['xmax']},{bbox['ymin']},{bbox['ymax']},,,,,,,{bbox['label']}\n")
+                bboxes = bounding_boxes_pascal(
+                    os.path.join(pascal_dir, file_id + ".xml"),
+                )
+                for bbox in bboxes:
+                    csv_file.write(
+                        f"{file_id},,,,{bbox['xmin']},{bbox['xmax']},"
+                        f"{bbox['ymin']},{bbox['ymax']},,,,,,,{bbox['label']}\n",
+                    )
 
 
 # ------------------------------------------------------------------------------
