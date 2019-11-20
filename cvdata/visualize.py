@@ -6,6 +6,7 @@ from typing import List
 from xml.etree import ElementTree
 
 import cv2
+import pandas as pd
 
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
@@ -256,13 +257,13 @@ if __name__ == "__main__":
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
-        "--annotations_dir",
+        "--annotations",
         required=True,
         type=str,
         help="annotations directory path",
     )
     args_parser.add_argument(
-        "--images_dir",
+        "--images",
         required=True,
         type=str,
         help="images directory path",
@@ -271,85 +272,125 @@ if __name__ == "__main__":
         "--format",
         type=str,
         required=True,
-        choices=["coco", "darknet", "kitti", "pascal"],
+        choices=["coco", "darknet", "kitti", "openimages", "pascal"],
         help="annotation format",
     )
     args = vars(args_parser.parse_args())
 
-    # for each annotation file we'll draw all bounding boxes on the corresponding image
-    count = 0
-    for annotation_file_name in os.listdir(args["annotations_dir"]):
+    if args["format"] == "openimages":
 
-        count += 1
+        # read the OpenImages CSV into a pandas DataFrame
+        df_annotations = pd.read_csv(args["annotations"])
 
-        # we assume each annotation shares the same base name as the corresponding image
-        annotations_file_path = \
-            os.path.join(args["annotations_dir"], annotation_file_name)
-        image_file_name = os.path.splitext(annotation_file_name)[0] + ".jpg"
+        count = 0
+        for image_file_name in os.listdir(args["images"]):
 
-        # load the input image from disk to determine the dimensions
-        image_file_path = \
-            os.path.join(args["images_dir"], image_file_name)
-        image = cv2.imread(image_file_path)
-        try:
-            image_height, image_width = image.shape[:2]
-        except AttributeError as attribute_error:
-            _logger.error(f"Bad image: {image_file_path}", attribute_error)
-            continue
+            count += 1
+            image_id = os.path.splitext(image_file_name)[0]
+            bboxes = df_annotations.loc[df_annotations["ImageID"] == image_id]
+            if len(bboxes) > 0:
+                image = cv2.imread(os.path.join(args["images"], image_file_name))
+                for _, bbox in bboxes.iterrows():
+                    # draw the box
+                    cv2.rectangle(
+                        image,
+                        (bbox["XMin"], bbox["YMin"]),
+                        (bbox["XMax"], bbox["YMax"]),
+                        (0, 255, 0),
+                        2,
+                    )
+                    # draw the label
+                    cv2.putText(
+                        image,
+                        bbox["ClassName"],
+                        (bbox["XMin"], bbox["YMin"]),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.45,
+                        (255, 0, 255),
+                        1,
+                    )
+                _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
 
-        # read the bounding boxes from the annotation file
-        bboxes = []
+                # show the output image
+                cv2.imshow("Image", image)
+                cv2.waitKey(0)
 
-        if args["format"] == "coco":
-            if annotation_file_name.endswith(".json"):
-                bboxes = bbox_coco(annotations_file_path)
-            else:
+    else:
+
+        # for each annotation file we'll draw all bounding boxes on the corresponding image
+        count = 0
+        for annotation_file_name in os.listdir(args["annotations"]):
+
+            count += 1
+
+            # we assume each annotation shares the same base name as the corresponding image
+            annotations_file_path = \
+                os.path.join(args["annotations"], annotation_file_name)
+            image_file_name = os.path.splitext(annotation_file_name)[0] + ".jpg"
+
+            # load the input image from disk to determine the dimensions
+            image_file_path = \
+                os.path.join(args["images_dir"], image_file_name)
+            image = cv2.imread(image_file_path)
+            try:
+                image_height, image_width = image.shape[:2]
+            except AttributeError as attribute_error:
+                _logger.error(f"Bad image: {image_file_path}", attribute_error)
                 continue
-        elif args["format"] == "darknet":
-            if annotation_file_name.endswith(".txt"):
-                bboxes = bbox_darknet(annotations_file_path, image_width, image_height)
-            else:
-                continue
-        elif args["format"] == "kitti":
-            if annotation_file_name.endswith(".txt"):
-                bboxes = bbox_kitti(annotations_file_path, image_width, image_height)
-            else:
-                continue
-        elif args["format"] == "pascal":
-            if annotation_file_name.endswith(".xml"):
-                try:
-                    bboxes = bbox_pascal(annotations_file_path, image_width, image_height)
-                except ValueError as value_error:
-                    _logger.error(f"Bad annotation: {annotations_file_path}", value_error)
+
+            # read the bounding boxes from the annotation file
+            bboxes = []
+
+            if args["format"] == "coco":
+                if annotation_file_name.endswith(".json"):
+                    bboxes = bbox_coco(annotations_file_path)
+                else:
+                    continue
+            elif args["format"] == "darknet":
+                if annotation_file_name.endswith(".txt"):
+                    bboxes = bbox_darknet(annotations_file_path, image_width, image_height)
+                else:
+                    continue
+            elif args["format"] == "kitti":
+                if annotation_file_name.endswith(".txt"):
+                    bboxes = bbox_kitti(annotations_file_path, image_width, image_height)
+                else:
+                    continue
+            elif args["format"] == "pascal":
+                if annotation_file_name.endswith(".xml"):
+                    try:
+                        bboxes = bbox_pascal(annotations_file_path, image_width, image_height)
+                    except ValueError as value_error:
+                        _logger.error(f"Bad annotation: {annotations_file_path}", value_error)
+                        continue
+                else:
                     continue
             else:
-                continue
-        else:
-            raise ValueError(f"Invalid format argument: \'{args['format']}\'")
+                raise ValueError(f"Invalid format argument: \'{args['format']}\'")
 
-        # for each bounding box draw the rectangle
-        for bbox in bboxes:
+            # for each bounding box draw the rectangle
+            for bbox in bboxes:
 
-            # draw the box
-            cv2.rectangle(
-                image,
-                (bbox["x"], bbox["y"]),
-                (bbox["x"] + bbox["w"], bbox["y"] + bbox["h"]),
-                (0, 255, 0),
-                2,
-            )
-            # draw the label
-            cv2.putText(
-                image,
-                bbox["label"],
-                (bbox["x"], bbox["y"]),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.45,
-                (123, 234, 56),
-                1,
-            )
-        _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
+                # draw the box
+                cv2.rectangle(
+                    image,
+                    (bbox["x"], bbox["y"]),
+                    (bbox["x"] + bbox["w"], bbox["y"] + bbox["h"]),
+                    (0, 255, 0),
+                    2,
+                )
+                # draw the label
+                cv2.putText(
+                    image,
+                    bbox["label"],
+                    (bbox["x"], bbox["y"]),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45,
+                    (255, 0, 255),
+                    1,
+                )
+            _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
 
-        # show the output image
-        cv2.imshow("Image", image)
-        cv2.waitKey(0)
+            # show the output image
+            cv2.imshow("Image", image)
+            cv2.waitKey(0)
