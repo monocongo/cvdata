@@ -37,6 +37,10 @@ def exclude_files(
     :param annotation_format: annotation format
     """
 
+    # argument validation
+    if annotation_format not in set(format_choices):
+        raise ValueError(f"Unsupported annotation format: \'{annotation_format}\'")
+
     def remove_matching_files(
             removal_ids: Set[str],
             directory: str,
