@@ -25,37 +25,6 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def pascal_png_to_jpg(
-        pascal_dir: str,
-        images_dir: str,
-):
-
-    _logger.info(f"Converting from PNG to JPG for images in directory {images_dir}")
-
-    for file_name in tqdm(os.listdir(images_dir)):
-        file_id, extension = os.path.splitext(file_name)
-        if extension[1:].strip().lower() == ".png":
-            # convert the image from PNG to JPG
-            jpg_file_path = os.path.join(images_dir, file_id + ".jpg")
-            png_file_name = file_id + ".png"
-            png_file_path = os.path.join(images_dir, png_file_name)
-            img = cv2.imread(png_file_path)
-            cv2.imwrite(jpg_file_path, img)
-
-            # update the filename and path elements to reflect the new file type
-            annotation_path = os.path.join(pascal_dir, file_id + ".xml")
-            tree = ElementTree.parse(annotation_path)
-            root = tree.getroot()
-            file_name = root.find("filename")
-            if file_name is not None:
-                file_name.text = png_file_name
-            path = root.find("path")
-            if path is not None:
-                path.text = png_file_path
-            tree.write(annotation_path)
-
-
-# ------------------------------------------------------------------------------
 def single_pascal_to_kitti(arguments: Dict):
 
     pascal_file_name = arguments["file_id"] + arguments["pascal_ext"]
@@ -240,7 +209,7 @@ def pascal_to_openimages(
 
     # create the destination directories for the image split subsets
     openimages_train_dir = os.path.join(openimages_dir, "train")
-    openimages_valid_dir = os.path.join(openimages_dir, "valid")
+    openimages_valid_dir = os.path.join(openimages_dir, "validation")
     openimages_test_dir = os.path.join(openimages_dir, "test")
     os.makedirs(openimages_train_dir, exist_ok=True)
     os.makedirs(openimages_valid_dir, exist_ok=True)
@@ -259,7 +228,7 @@ def pascal_to_openimages(
     split_train_valid_test_images(split_arguments)
 
     # translate PASCAL annotations to corresponding lines in the OpenImages CSVs
-    for section in ["train", "valid", "test"]:
+    for section in ["train", "validation", "test"]:
 
         csv_file_path = \
             os.path.join(openimages_dir, "sub-" + section + "-annotations-bbox.csv")
@@ -294,7 +263,7 @@ def openimages_to_kitti():
 
 
 # ------------------------------------------------------------------------------
-def openimages_png_to_jpg():
+def openimages_to_pascal():
     # TODO
     pass
 
@@ -346,6 +315,13 @@ if __name__ == "__main__":
              "parent directory of the output directory for KITTI data",
     )
     args_parser.add_argument(
+        "--split",
+        required=False,
+        type=str,
+        help="split percentages, in format \"train:valid:test\" where train, "
+             "valid and test are floats (decimals) and must sum to 1.0",
+    )
+    args_parser.add_argument(
         "--in_format",
         required=True,
         type=str,
@@ -366,10 +342,6 @@ if __name__ == "__main__":
             pascal_to_kitti(args["annotations_dir"], args["images_dir"], args["out_dir"], args["kitti_ids_file"])
         elif args["out_format"] == "openimages":
             pascal_to_openimages(args["annotations_dir"], args["images_dir"], args["out_dir"])
-        elif args["out_format"] == "pascal":
-            # if going from PASCAL to PASCAL then we're actually
-            # converting the corresponding images from PNG to JPG
-            pascal_png_to_jpg(args["annotations_dir"], args["images_dir"])
         else:
             raise ValueError(
                 "Unsupported format conversion: "
@@ -379,11 +351,7 @@ if __name__ == "__main__":
         if args["out_format"] == "kitti":
             openimages_to_kitti(args["annotations_dir"], args["images_dir"], args["out_dir"], args["kitti_ids_file"])
         elif args["out_format"] == "pascal":
-            pascal_to_openimages(args["annotations_dir"], args["images_dir"], args["out_dir"])
-        elif args["out_format"] == "openimages":
-            # if going from OpenImages to OpenImages then we're actually
-            # converting the corresponding images from PNG to JPG
-            openimages_png_to_jpg(args["annotations_dir"], args["images_dir"])
+            openimages_to_pascal(args["annotations_dir"], args["images_dir"], args["out_dir"])
         else:
             raise ValueError(
                 "Unsupported format conversion: "
