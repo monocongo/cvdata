@@ -51,7 +51,18 @@ def test_resize(
     # TODO
 
     # confirm that resizing occurred as expected for a KITTI annotated image
-    resize.resize_image(file_id, image_ext, kitti_ext, data_dir, data_dir, resized_dir, resized_dir, new_width, new_height, "kitti")
+    resize.resize_image(
+        file_id,
+        image_ext,
+        kitti_ext,
+        data_dir,
+        data_dir,
+        resized_dir,
+        resized_dir,
+        new_width,
+        new_height,
+        "kitti",
+    )
     resized_image_file_path = os.path.join(resized_dir, image_file_name)
     resized_image = cv2.imread(resized_image_file_path)
     expected_resized_image = cv2.imread(expected_resized_image_file_path)
@@ -62,7 +73,18 @@ def test_resize(
     assert text_files_equal(resized_kitti_file_path, expected_resized_kitti_file_path)
 
     # confirm that resizing occurred as expected for a PASCAL annotated image
-    resize.resize_image(file_id, image_ext, pascal_ext, data_dir, data_dir, resized_dir, resized_dir, new_width, new_height, "pascal")
+    resize.resize_image(
+        file_id,
+        image_ext,
+        pascal_ext,
+        data_dir,
+        data_dir,
+        resized_dir,
+        resized_dir,
+        new_width,
+        new_height,
+        "pascal",
+    )
     resized_image_file_path = os.path.join(resized_dir, image_file_name)
     resized_image = cv2.imread(resized_image_file_path)
     expected_resized_image = cv2.imread(expected_resized_image_file_path)

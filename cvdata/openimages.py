@@ -471,7 +471,7 @@ def to_darknet(
 
             # get the label index based on the annotation's object name
             # find the bounding box's center X and Y, and width/height
-            bbox_min_x, bbox_max_x, bbox_min_y, bbox_max_y  = bbox
+            bbox_min_x, bbox_max_x, bbox_min_y, bbox_max_y = bbox
             bbox_width = (bbox_max_x - bbox_min_x) * image_width
             bbox_height = (bbox_max_y - bbox_min_y) * image_height
             bbox_width_fraction = bbox_width / image_width

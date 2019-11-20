@@ -165,18 +165,18 @@ def _relocate_files(
     :return: 0 indicates success
     """
 
-    def relocate_file(copy_file: bool, src_file_path: str, dest_dir: str):
+    def relocate_file(copy_file: bool, src_file_path: str, dest_directory: str):
         """
         TODO
 
         :param copy_file whether or not to copy the files (move files if false)
         :param src_file_path: absolute path of source file to be copied
-        :param dest_dir: destination directory for the file copy
+        :param dest_directory: destination directory for the file copy
         :return: 0 indicates success
         """
 
         file_name = os.path.basename(src_file_path)
-        dest_file_path = os.path.join(dest_dir, file_name)
+        dest_file_path = os.path.join(dest_directory, file_name)
         if copy_file:
             shutil.copy2(src_file_path, dest_file_path)
         else:
@@ -483,4 +483,4 @@ if __name__ == "__main__":
 
     # split files from the images and annotations
     # directories into training and validation sets
-    split_train_valid_test(args)
+    split_train_valid_test_dataset(args)

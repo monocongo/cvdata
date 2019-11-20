@@ -1,4 +1,5 @@
-import setuptools, os
+import os
+import setuptools
 
 parent_dir = os.path.dirname(os.path.realpath(__file__))
 
