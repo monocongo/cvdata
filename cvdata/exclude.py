@@ -66,7 +66,7 @@ def exclude_files(
 
     if annotation_format == "openimages":
         df = pd.read_csv(annotations)
-        df = df[df["ImageID"] not in exclusion_ids]
+        df = df[~df["ImageID"].isin(exclusion_ids)]
         df.to_csv(annotations)
     else:  # annotation file names match to image file names for other formats
         remove_matching_files(exclusion_ids, annotations)
