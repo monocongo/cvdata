@@ -322,6 +322,15 @@ def resize_images(
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
 
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Usage:
+    # $ python resize.py --input_images /home/survailproto/ML/dataset/Nov-20-2019-04-40-11-pm/images \
+    #       --output_images /data/weapons/images \
+    #       --input_annotations /home/survailproto/ML/dataset/Nov-20-2019-04-40-11-pm/annotations-kitti \
+    #       --output_annotations /data/weapons/kitti \
+    #       --width 1024 --height 768 --format kitti
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
@@ -366,7 +375,6 @@ if __name__ == "__main__":
         required=False,
         default="pascal",
         choices=format_choices,
-        # choices=["darknet", "coco", "kitti", "pascal", "tfrecord"],
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     args = vars(args_parser.parse_args())

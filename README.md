@@ -12,13 +12,23 @@ The above will save each image class in a separate subdirectory under the base
 directory, with images in a subdirectory named "images" and the PASCAL VOC format 
 annotations in a subdirectory named "pascal".
 
-## Rename annotation labels
-In order to rename the image class labels of annotations use the script 
-`cvdata/visualize.py`. This script currently supports annotations in KITTI (*.txt) 
+## Replace annotation labels
+In order to replace the image class labels of annotations use the script 
+`cvdata/relabel.py`. This script currently supports annotations in KITTI (*.txt) 
 and PASCAL VOC (*.xml) formats. It is used to replace the label name for all 
 annotation files of the specified format in the specified directory. For example:
 ```bash
-$ python rename.py --labels_dir /data/cvdata/pascal --old handgun --new firearm --format pascal
+$ python relabel.py --labels_dir /data/cvdata/pascal --old handgun --new firearm --format pascal
+```
+
+## Resize images and associated annotations
+To resize images and their corresponding annotations we can utilize the script 
+`cvdata/resize.py`. This script currently supports annotations in KITTI (*.txt) 
+and PASCAL VOC (*.xml) formats. For example:
+```bash
+$ python cvdata/resize.py --input_images /home/ubuntu/weapons/images \
+> --output_images /data/weapons/images --input_annotations /home/ubuntu/weapons/kitti \
+> --output_annotations /data/weapons/kitti  --width 1024 --height 768 --format kitti
 ```
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
