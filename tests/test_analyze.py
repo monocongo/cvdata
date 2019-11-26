@@ -33,3 +33,9 @@ def test_count_labels(
     label_counts = analyze.count_labels(annotation_file_path, annotation_format)
     assert label_counts["person"] == 2
     assert label_counts["car"] == 1
+    annotation_format = "darknet"
+    annotation_file_path = os.path.join(str(data_dir), annotation_format, "darknet_1.txt")
+    label_counts = analyze.count_labels(annotation_file_path, annotation_format)
+    assert label_counts["1"] == 2
+    assert label_counts["2"] == 1
+    assert label_counts["3"] == 1
