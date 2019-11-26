@@ -5,7 +5,6 @@ import os
 from typing import Dict
 from xml.etree import ElementTree
 
-import cv2
 import pandas as pd
 
 import cvdata.common
@@ -31,7 +30,7 @@ def labels_count_coco(
 
     :param file_path: path to a COCO annotation file
     :return: dictionary object with label names as keys mapped to the count of
-        how many bounding boxes for the label are present in the annotation file
+        how many bounding boxes for that label are present in the annotation file
     """
 
     with open(file_path) as json_file:
@@ -60,7 +59,7 @@ def labels_count_pascal(
 
     :param file_path: path to a PASCAL VOC annotation file
     :return: dictionary object with label names as keys mapped to the count of
-        how many bounding boxes for the label are present in the annotation file
+        how many bounding boxes for that label are present in the annotation file
     """
 
     counts = {}
@@ -86,9 +85,9 @@ def labels_count_text(
     """
     TODO
 
-    :param file_path: path to a Darknet annotation file
+    :param file_path: path to a text (Darknet or KITTI) annotation file
     :return: dictionary object with label names as keys mapped to the count of
-        how many bounding boxes for the label are present in the annotation file
+        how many bounding boxes for that label are present in the annotation file
     """
 
     counts = {}
@@ -113,9 +112,9 @@ def labels_count_tfrecord(
     """
     TODO
 
-    :param file_path: path to a Darknet annotation file
+    :param file_path: path to a TFRecord annotation file
     :return: dictionary object with label names as keys mapped to the count of
-        how many bounding boxes for the label are present in the annotation file
+        how many bounding boxes for that label are present in the annotation file
     """
 
     raise ValueError("Unsupported format: \"tfrecord\"")
@@ -123,18 +122,18 @@ def labels_count_tfrecord(
 
 # ------------------------------------------------------------------------------
 def count_labels(
-        annotation_file_path: str,
+        annotation_path: str,
         annotation_format: str,
 ) -> Dict:
 
     if annotation_format == "coco":
-        return labels_count_coco(annotation_file_path)
+        return labels_count_coco(annotation_path)
     elif annotation_format in ["darknet", "kitti"]:
-        return labels_count_text(annotation_file_path)
+        return labels_count_text(annotation_path)
     elif annotation_format == "pascal":
-        return labels_count_pascal(annotation_file_path)
+        return labels_count_pascal(annotation_path)
     elif annotation_format == "tfrecord":
-        return labels_count_tfrecord(annotation_file_path)
+        return labels_count_tfrecord(annotation_path)
     else:
         raise ValueError(f"Unsupported annotation format: \"{annotation_format}\"")
 
@@ -149,6 +148,7 @@ if __name__ == "__main__":
     #
     # $ python analyze.py --images /home/ubuntu/data/handgun/images \
     #       --annotations /home/ubuntu/data/handgun/annotations/coco \
+    #       --file_ids_dir /home/ubuntu/data/handgun/annotations/coco \
     #       --format coco
     #
 
@@ -173,7 +173,20 @@ if __name__ == "__main__":
         choices=cvdata.common.FORMAT_CHOICES,
         help="annotation format",
     )
+    args_parser.add_argument(
+        "--file_ids",
+        type=str,
+        required=False,
+        help="directory in which to write text files with file IDs for each "
+             "image/annotation in the dataset that contains a label, with "
+             "one file per label",
+    )
     args = vars(args_parser.parse_args())
+
+    # the two dictionaries we'll build for final reporting
+    label_counts = {}
+    if args["file_ids"]:
+        label_file_ids = {}
 
     if args["format"] == "openimages":
 
@@ -181,14 +194,14 @@ if __name__ == "__main__":
         df_annotations = pd.read_csv(args["annotations"])
         df_annotations = df_annotations[['ImageID', 'LabelName']]
 
-        # TODO get another dataframe fromthe class descriptions and get the
+        # TODO get another dataframe from the class descriptions and get the
         #  readable label names from there to map to the LabelName column
 
         # whittle it down to only the rows that match to image IDs
         file_ids = [os.path.splitext(file_name)[0] for file_name in os.listdir(args["images"])]
         df_annotations = df_annotations[df_annotations["ImageID"].isin(file_ids)]
 
-        pass
+        # TODO populate the label counts and label file IDs dictionaries
 
     else:
 
@@ -197,17 +210,35 @@ if __name__ == "__main__":
         # only annotations matching to the images are considered to be valid
         file_ids = matching_ids(args["annotations"], args["images"], annotation_ext, ".jpg")
 
-        label_counts = {}
         for file_id in file_ids:
             annotation_file_path = \
                 os.path.join(args["annotations"], file_id + annotation_ext)
+
+            # get the images per label count
             for label, count in count_labels(annotation_file_path, args["format"]).items():
                 if label in label_counts:
                     label_counts[label] += 1
                 else:
                     label_counts[label] = 1
 
-        pass
+                # for each label found in the annotation file add this file ID
+                # to the set of file IDs corresponding to the label
+                if args["file_ids"]:
+                    if label in label_file_ids:
+                        # add this file ID to the existing set for the label
+                        label_file_ids[label].add(file_id)
+                    else:
+                        # first file ID seen for this label so create new set
+                        label_file_ids[label] = {file_id}
 
-        for label, count in label_counts.items():
-            print(f"Label: {label}\t\tCount: {count}")
+    # write the images per label counts
+    for label, count in label_counts.items():
+        print(f"Label: {label}\t\tCount: {count}")
+
+    # write the label ID files, if requested
+    if args["file_ids"]:
+        for label, file_ids_for_label in label_file_ids.items():
+            label_file_ids_path = os.path.join(args["file_ids"], label + ".txt")
+            with open(label_file_ids_path, "w") as label_file_ids_file:
+                for file_id in file_ids_for_label:
+                    label_file_ids_file.write(f"{file_id}\n")
