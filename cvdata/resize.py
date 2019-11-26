@@ -10,15 +10,8 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-from cvdata.common import FORMAT_CHOICES as format_choices
+import cvdata.common
 from cvdata.utils import matching_ids
-
-_FORMAT_EXTENSIONS = {
-    "coco": ".json",
-    "darknet": ".txt",
-    "kitti": ".txt",
-    "pascal": ".xml",
-}
 
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
@@ -275,7 +268,7 @@ def resize_images(
     if annotation_format not in ["kitti", "pascal"]:
         raise ValueError(f"Unsupported annotation format: {annotation_format}")
     else:
-        annotation_ext = _FORMAT_EXTENSIONS[annotation_format]
+        annotation_ext = cvdata.common.FORMAT_EXTENSIONS[annotation_format]
 
     # create the destination directories in case they don't already exist
     os.makedirs(output_annotations_dir, exist_ok=True)
@@ -365,8 +358,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=format_choices,
-        # choices=["darknet", "coco", "kitti", "pascal", "tfrecord"],
+        choices=cvdata.common.FORMAT_CHOICES,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     args = vars(args_parser.parse_args())
