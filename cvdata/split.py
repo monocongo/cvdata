@@ -7,15 +7,7 @@ import random
 import shutil
 from typing import Dict, List
 
-from cvdata.common import FORMAT_CHOICES as format_choices
-
-_FORMAT_EXTENSIONS = {
-    "coco": ".json",
-    "darknet": ".txt",
-    "kitti": ".txt",
-    "openimages": ".csv",
-    "pascal": ".xml",
-}
+import cvdata.common
 
 
 # ------------------------------------------------------------------------------
@@ -290,7 +282,7 @@ def split_train_valid_test_dataset(split_arguments: Dict):
     images = map_ids_to_paths(split_arguments["images_dir"], [".jpg", ".png"])
     annotations = map_ids_to_paths(
         split_arguments["annotations_dir"],
-        [_FORMAT_EXTENSIONS[split_arguments["format"]]],
+        [cvdata.common.FORMAT_EXTENSIONS[split_arguments["format"]]],
     )
 
     # find matching image/annotation file IDs
@@ -451,7 +443,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=format_choices,
+        choices=cvdata.common.FORMAT_CHOICES,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     # add an option that defaults to copying files, otherwise files will be moved
