@@ -1,3 +1,8 @@
+import cv2
+# scikit-image version <0.16
+from skimage.measure import compare_mse as mean_squared_error
+# scikit-image version >=0.16
+# from skimage.metrics import mean_squared_error
 from xml.etree import ElementTree
 
 
@@ -15,6 +20,18 @@ def elements_equal(e1, e2) -> bool:
     if len(e1) != len(e2):
         return False
     return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
+
+
+# ------------------------------------------------------------------------------
+def images_equal(
+        image_path_1: str,
+        image_path_2: str,
+) -> bool:
+
+    return mean_squared_error(
+        cv2.imread(image_path_1),
+        cv2.imread(image_path_2),
+    ) < 0.0001
 
 
 # ------------------------------------------------------------------------------
