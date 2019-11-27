@@ -7,6 +7,7 @@ import shutil
 from typing import Dict, List
 from xml.etree import ElementTree
 
+import cv2
 from tqdm import tqdm
 
 from cvdata.split import split_train_valid_test_images
@@ -146,6 +147,33 @@ def pascal_to_kitti(
 
     # return the number of annotations converted
     return len(file_ids)
+
+
+# ------------------------------------------------------------------------------
+def png_to_jpg(
+        png_file_path: str,
+        remove_png: bool = False,
+) -> str:
+    """
+    Converts a PNG image to JPG and optionally removes the original PNG image file.
+
+    :param png_file_path: path to a PNG image file
+    :param remove_png: whether or not to remove the original PNG after the conversion
+    :return: path to the new JPG file
+    """
+
+    # argument validation
+    if not os.path.exists(png_file_path):
+        raise ValueError(f"File does not exist: {png_file_path}")
+
+    # read the PNG image data and rewrite as JPG
+    jpg_file_path = os.path.splitext(png_file_path)[0] + ".jpg"
+    img = cv2.imread(png_file_path)
+    cv2.imwrite(jpg_file_path, img)
+    if remove_png:
+        os.remove(png_file_path)
+
+    return jpg_file_path
 
 
 # ------------------------------------------------------------------------------
