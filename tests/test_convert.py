@@ -9,6 +9,8 @@ from skimage.measure import compare_mse as mean_squared_error
 # from skimage.metrics import mean_squared_error
 
 from cvdata import convert
+from tests.assert_utils import images_equal
+
 
 # ------------------------------------------------------------------------------
 # disable logging messages
@@ -32,7 +34,4 @@ def test_png_to_jpg(
     converted_jpg_file_path = os.path.join(str(data_dir), "james.jpg")
     assert jpg_file_path == converted_jpg_file_path
     expected_jpg_file_path = os.path.join(str(data_dir), "expected_james.jpg")
-    assert mean_squared_error(
-        cv2.imread(converted_jpg_file_path),
-        cv2.imread(expected_jpg_file_path),
-    ) < 0.0001
+    assert images_equal(converted_jpg_file_path, expected_jpg_file_path)
