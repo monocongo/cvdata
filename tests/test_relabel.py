@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 import pytest
 
 from cvdata import relabel
-from tests.assert_utils import elements_equal, text_files_equal
+from assert_utils import elements_equal, text_files_equal
 
 # ------------------------------------------------------------------------------
 # disable logging messages

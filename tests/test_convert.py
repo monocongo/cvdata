@@ -9,7 +9,7 @@ from skimage.measure import compare_mse as mean_squared_error
 # from skimage.metrics import mean_squared_error
 
 from cvdata import convert
-from tests.assert_utils import images_equal
+from assert_utils import images_equal
 
 
 # ------------------------------------------------------------------------------
