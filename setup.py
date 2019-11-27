@@ -8,14 +8,14 @@ with open(f"{parent_dir}/README.md", "r") as readme_file:
 
 setuptools.setup(
     name="cvdata",
-    version="0.0.1",
+    version="0.0.2",
     author="James Adams",
     author_email="monocongo@gmail.com",
     description="Tools for creating and manipulating computer vision datasets",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
-    python_requires=">=3.0, <3.8",
+    python_requires=">=3.0",
     packages=[
         "cvdata",
     ],
@@ -30,15 +30,11 @@ setuptools.setup(
         "boto3",
         "lxml",
         "numpy",
-        "opencv-contrib-python-nonfree",
+        "opencv-python",
+        # "opencv-contrib-python-nonfree",
         "pandas",
         "pillow",
         "requests",
         "tqdm",
     ],
-    tests_require=[
-        "opencv",
-        "pytest",
-        "scikit-image",
-    ]
 )
