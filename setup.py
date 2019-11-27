@@ -37,9 +37,4 @@ setuptools.setup(
         "requests",
         "tqdm",
     ],
-    # tests_require=[
-    #     "opencv-python",
-    #     "pytest",
-    #     "scikit-image",
-    # ],
 )
