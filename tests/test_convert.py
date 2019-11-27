@@ -1,7 +1,12 @@
 import logging
 import os
 
+import cv2
 import pytest
+# scikit-image version <0.16
+from skimage.measure import compare_mse as mean_squared_error
+# scikit-image version >=0.16
+# from skimage.metrics import mean_squared_error
 
 from cvdata import convert
 
@@ -24,5 +29,10 @@ def test_png_to_jpg(
     """
     png_file_path = os.path.join(str(data_dir), "james.png")
     jpg_file_path = convert.png_to_jpg(png_file_path)
+    converted_jpg_file_path = os.path.join(str(data_dir), "james.jpg")
+    assert jpg_file_path == converted_jpg_file_path
     expected_jpg_file_path = os.path.join(str(data_dir), "expected_james.jpg")
-    assert jpg_file_path == expected_jpg_file_path
+    assert mean_squared_error(
+        cv2.imread(converted_jpg_file_path),
+        cv2.imread(expected_jpg_file_path),
+    ) < 0.0001
