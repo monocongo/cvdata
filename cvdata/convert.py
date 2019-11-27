@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
-from typing import Dict, List
+from typing import Dict, List, Set
 from xml.etree import ElementTree
 
 import cv2
@@ -233,18 +233,18 @@ def pascal_to_openimages(
 ):
 
     def csv_from_pascal(
-            csv_file_path: str,
+            file_path_csv: str,
             images_directory: str,
             pascal_directory: str,
     ):
         bbox_file_ids = []
-        with open(csv_file_path, "w") as csv_file:
+        with open(file_path_csv, "w") as csv_file:
             csv_file.write(
                 "ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,"
                 "IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside,id,ClassName\n",
             )
-            file_ids = matching_ids(pascal_directory, images_directory, ".xml", ".jpg")
-            for file_id in file_ids:
+            matching_file_ids = matching_ids(pascal_directory, images_directory, ".xml", ".jpg")
+            for file_id in matching_file_ids:
                 bboxes = bounding_boxes_pascal(
                     os.path.join(pascal_directory, file_id + ".xml"),
                 )
@@ -260,7 +260,7 @@ def pascal_to_openimages(
         return set(bbox_file_ids)
 
     def remove_invalid_files(
-            valid_file_ids: List[str],
+            valid_file_ids: Set[str],
             directory: str,
     ):
         # go through the files in the images directory and remove any that
