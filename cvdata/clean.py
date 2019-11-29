@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import shutil
@@ -85,7 +86,7 @@ def clean_pascal(
 
             # update the image file name
             file_name = root.find("filename")
-            if (file_name is not None) and (file_name != jpg_file_name):
+            if (file_name is not None) and (file_name.text != jpg_file_name):
                 file_name.text = jpg_file_name
 
             # loop over all bounding boxes
@@ -141,3 +142,64 @@ def clean_pascal(
 
             # write the tree back to file
             tree.write(src_annotation_file_path)
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Usage:
+    # $ python clean.py --format pascal \
+    #       --annotations_dir /data/datasets/delivery_truck/pascal \
+    #       --images_dir /data/datasets/delivery_truck/images \
+    #       --rename_labels deivery:delivery
+
+    # parse the command line arguments
+    format_choices = ["coco", "darknet", "kitti", "openimages", "pascal"]
+    args_parser = argparse.ArgumentParser()
+    args_parser.add_argument(
+        "--annotations_dir",
+        required=True,
+        type=str,
+        help="path to directory containing annotation files to be cleaned",
+    )
+    args_parser.add_argument(
+        "--images_dir",
+        required=True,
+        type=str,
+        help="path to directory containing image files",
+    )
+    args_parser.add_argument(
+        "--problems_dir",
+        required=True,
+        type=str,
+        help="path to directory where we should move problem files",
+    )
+    args_parser.add_argument(
+        "--format",
+        required=True,
+        type=str,
+        choices=format_choices,
+        help="format of input annotations",
+    )
+    args_parser.add_argument(
+        "--rename_labels",
+        required=False,
+        type=str,
+        help="labels to be renamed, in format new:old (space separated)",
+    )
+    args = vars(args_parser.parse_args())
+
+    if args["rename_labels"]:
+        renames = {}
+        for rename_labels in args["rename_labels"].split():
+            from_label, to_label = rename_labels.split(":")
+            renames[from_label] = to_label
+
+    if args["format"] == "pascal":
+
+        clean_pascal(
+            args["annotations_dir"],
+            args["images_dir"],
+            renames,
+            args["problems_dir"],
+        )

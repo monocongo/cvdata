@@ -46,6 +46,17 @@ annotation files of the specified format in the specified directory. For example
 $ python rename.py --labels_dir /data/cvdata/pascal --old handgun --new firearm --format pascal
 ```
 
+## Sanitize dataset
+In order to clean a dataset's annotations we can utilize the script `cvdata/clean.py` 
+which will convert the images to JPG (if any are in PNG format), rename labels 
+(if specified) and update the PASCAL VOC annotation files so that all bounding 
+boxes are within reasonable range. For example:
+```bash
+$ python clean.py --format pascal \
+>     --annotations_dir /data/datasets/delivery_truck/pascal \
+>    --images_dir /data/datasets/delivery_truck/images \
+>    --rename_labels deivery:delivery
+```
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py`. This script currently supports annotations in COCO (*.json), 
