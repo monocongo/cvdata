@@ -146,20 +146,12 @@ def clean_pascal(
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    """
-    Usage: PASCAL to KITTI
-    $ python convert.py --annotations_dir ~/datasets/handgun/annotations/pascal \
-        --images_dir ~/datasets/handgun/images \
-        --out_dir ~/datasets/handgun/kitti \
-        --in_format pascal --out_format kitti \
-        --kitti_ids_file file_ids.txt
 
-    Usage: PASCAL to OpenImages
-    $ python convert.py --annotations_dir ~/datasets/handgun/pascal \
-        --images_dir ~/datasets/handgun/images \
-        --out_dir ~/datasets/handgun/openimages \
-        --in_format pascal --out_format openimages
-    """
+    # Usage:
+    # $ python clean.py --format pascal \
+    #       --annotations_dir /data/datasets/delivery_truck/pascal \
+    #       --images_dir /data/datasets/delivery_truck/images \
+    #       --rename_labels deivery:delivery
 
     # parse the command line arguments
     format_choices = ["coco", "darknet", "kitti", "openimages", "pascal"]
