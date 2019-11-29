@@ -1,12 +1,7 @@
 import logging
 import os
 
-import cv2
 import pytest
-# scikit-image version <0.16
-from skimage.measure import compare_mse as mean_squared_error
-# scikit-image version >=0.16
-# from skimage.metrics import mean_squared_error
 
 from cvdata import clean
 from tests.assert_utils import images_equal, xml_equal
