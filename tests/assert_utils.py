@@ -1,9 +1,7 @@
-import cv2
-# scikit-image version <0.16
-from skimage.measure import compare_mse as mean_squared_error
-# scikit-image version >=0.16
-# from skimage.metrics import mean_squared_error
 from xml.etree import ElementTree
+
+import cv2
+from skimage.metrics import mean_squared_error
 
 
 # ------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from cvdata import resize
-from tests.assert_utils import text_files_equal, xml_equal
+from assert_utils import text_files_equal, xml_equal
 
 # ------------------------------------------------------------------------------
 # disable logging messages

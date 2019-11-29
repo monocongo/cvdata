@@ -4,7 +4,7 @@ import os
 import pytest
 
 from cvdata import clean
-from tests.assert_utils import images_equal, xml_equal
+from assert_utils import images_equal, xml_equal
 
 # ------------------------------------------------------------------------------
 # disable logging messages
