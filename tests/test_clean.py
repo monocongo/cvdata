@@ -4,7 +4,7 @@ import os
 import pytest
 
 from cvdata import clean
-from assert_utils import images_equal, xml_equal
+from assert_utils import images_equal, text_files_equal, xml_equal
 
 # ------------------------------------------------------------------------------
 # disable logging messages
@@ -46,19 +46,8 @@ def test_clean_kitti(
     assert images_equal(converted_image_path, expected_image_path)
 
     # make sure that the KITTI file was correctly updated
-    assert len(text_file_differences(expected_kitti_path_1, os.path.join(data_dir, 'handgun_00941.txt'))) == 0
-    assert len(text_file_differences(expected_kitti_path_2, os.path.join(data_dir, 'handgun_00929.txt'))) == 0
-
-
-# ------------------------------------------------------------------------------
-def text_file_differences(
-        file_path_1: str,
-        file_path_2: str,
-):
-    with open(file_path_1, 'r') as file1:
-        with open(file_path_2, 'r') as file2:
-            differences = set(file1).difference(file2)
-    return differences
+    assert text_files_equal(expected_kitti_path_1, os.path.join(data_dir, 'handgun_00941.txt'))
+    assert text_files_equal(expected_kitti_path_2, os.path.join(data_dir, 'handgun_00929.txt'))
 
 
 # ------------------------------------------------------------------------------
