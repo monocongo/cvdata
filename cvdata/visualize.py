@@ -7,8 +7,12 @@ from xml.etree import ElementTree
 
 import cv2
 import pandas as pd
+import tensorflow as tf
 
 from cvdata.common import FORMAT_CHOICES as format_choices
+
+_RECTANGLE_BGR = (0, 255, 0)
+_TEXT_BGR = (255, 0, 255)
 
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
@@ -18,6 +22,90 @@ logging.basicConfig(
     datefmt="%Y-%m-%d  %H:%M:%S",
 )
 _logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------------------
+def show_tfrecords(
+        tfrecords_dir: str,
+        image_directory: str,
+):
+    for tfrecords_file in os.listdir(tfrecords_dir):
+        tfrecords_iterator = tf.io.tf_record_iterator(tfrecords_file)
+        for record in tfrecords_iterator:
+
+            example = tf.train.Example()
+            example.ParseFromString(record)
+            features = example.features.feature
+
+            x_min = features['target/coordinates_x1'].float_list.value
+            frame_id = features['frame/id'].bytes_list.value.__str__()[3:-2]
+            frame_width = int(features['frame/width'].int64_list.value.__str__()[1:-1])
+            frame_height = int(features['frame/height'].int64_list.value.__str__()[1:-1])
+            x_max = features['target/coordinates_x2'].float_list.value
+            y_min = features['target/coordinates_y1'].float_list.value
+            y_max = features['target/coordinates_y2'].float_list.value
+            i = 0
+            current_image_path = str(os.path.join(image_directory, frame_id)) + '.jpg'
+            img = cv2.imread(current_image_path)
+            print("Image path: ", current_image_path)
+            window_name = "Visualizer: {}/{}".format(frame_id, len(x_min))
+            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+            width = 500
+            height = int((img.shape[0] * width) / img.shape[1])
+            cv2.resizeWindow(window_name, width, height)
+            while i < len(x_min):
+                cv2.rectangle(img, (int(x_min[i]), int(y_min[i])),
+                              (int(x_max[i]), int(y_max[i])),
+                              _RECTANGLE_BGR, 3)
+                # TODO draw text for label
+                # # draw the label
+                # cv2.putText(
+                #     img,
+                #     label,
+                #     (int(x_max[i]), int(y_max[i])),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     0.45,
+                #     _TEXT_BGR,
+                #     1,
+                # )
+
+                i += 1
+
+            cv2.imshow(window_name, img)
+            print("Press n for next, q to quit")
+            k = cv2.waitKey(0) & 0xFF
+
+            if k == ord('n'):
+                cv2.destroyAllWindows()
+                continue
+            elif k == ord('q'):
+                cv2.destroyAllWindows()
+                exit(1)
+                break
+
+
+# ------------------------------------------------------------------------------
+def bbox_tfrecord(
+        file_path: str,
+) -> List[dict]:
+    """
+    Returns the labeled bounding boxes from a COCO annotation (*.json) file.
+
+    :param file_path: path to a COCO annotation file
+    :return: list of bounding box dictionary objects with keys "label", "x",
+        "y", "w", and "h"
+    """
+    with open(file_path) as json_file:
+        data = json.load(json_file)
+
+    boxes = []
+    for annotation in data["annotations"]:
+
+        x, y, w, h = annotation["bbox"]
+        box = {"label": "", "x": x, "y": y, "w": w, "h": h}
+        boxes.append(box)
+
+    return boxes
 
 
 # ------------------------------------------------------------------------------
@@ -298,7 +386,7 @@ if __name__ == "__main__":
                         image,
                         (bbox["XMin"], bbox["YMin"]),
                         (bbox["XMax"], bbox["YMax"]),
-                        (0, 255, 0),
+                        _RECTANGLE_BGR,
                         2,
                     )
                     # draw the label
@@ -308,7 +396,7 @@ if __name__ == "__main__":
                         (bbox["XMin"], bbox["YMin"]),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.45,
-                        (255, 0, 255),
+                        _TEXT_BGR,
                         1,
                     )
                 _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
@@ -316,6 +404,10 @@ if __name__ == "__main__":
                 # show the output image
                 cv2.imshow("Image", image)
                 cv2.waitKey(0)
+
+    elif args["format"] == "tfrecord":
+
+        show_tfrecords(args["annotations"], args["images"])
 
     else:
 
@@ -378,7 +470,7 @@ if __name__ == "__main__":
                     image,
                     (bbox["x"], bbox["y"]),
                     (bbox["x"] + bbox["w"], bbox["y"] + bbox["h"]),
-                    (0, 255, 0),
+                    _RECTANGLE_BGR,
                     2,
                 )
                 # draw the label
@@ -388,7 +480,7 @@ if __name__ == "__main__":
                     (bbox["x"], bbox["y"]),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.45,
-                    (255, 0, 255),
+                    _TEXT_BGR,
                     1,
                 )
             _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
