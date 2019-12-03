@@ -35,8 +35,8 @@ def clean_kitti(
         png_file_path = os.path.join(images_dir, file_id + ".png")
         png_to_jpg(png_file_path, remove_png=True)
 
-    # get a set of file IDs of the PASCAL VOC annotations and corresponding images
-    file_ids = matching_ids(labels_dir, images_dir, ".xml", ".jpg")
+    # get a set of file IDs of the KITTI-format annotations and corresponding images
+    file_ids = matching_ids(labels_dir, images_dir, ".txt", ".jpg")
 
     # make the problem files directory if necessary, in case it doesn't already exist
     if problems_dir is not None:
@@ -47,7 +47,7 @@ def clean_kitti(
         for file_name in os.listdir(dir):
             # only filter out image and KITTI label files (this is
             # needed in case a subdirectory exists in the directory)
-            if file_name.endswith(".xml") or file_name.endswith(".jpg"):
+            if file_name.endswith(".txt") or file_name.endswith(".jpg"):
                 if os.path.splitext(file_name)[0] not in file_ids:
                     unmatched_file = os.path.join(dir, file_name)
                     if problems_dir is not None:
@@ -56,7 +56,7 @@ def clean_kitti(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the KITTI annotations
-    for i, file_id in enumerate(file_ids):
+    for file_id in file_ids:
 
         # get the image width and height
         jpg_file_name = file_id + ".jpg"
@@ -70,21 +70,25 @@ def clean_kitti(
 
             parts = line.split()
             label = parts[0]
-            truncated = float(parts[1])
-            occluded = float(parts[2])
-            alpha = float(parts[3])
+            truncated = parts[1]
+            occluded = parts[2]
+            alpha = parts[3]
             bbox_min_x = int(float(parts[4]))
             bbox_min_y = int(float(parts[5]))
             bbox_max_x = int(float(parts[6]))
             bbox_max_y = int(float(parts[7]))
-            dim_x = float(parts[8])
-            dim_y = float(parts[9])
-            dim_z = float(parts[10])
-            loc_x = float(parts[11])
-            loc_y = float(parts[12])
-            loc_z = float(parts[13])
-            rotation_y = float(parts[14])
-            score = float(parts[15])
+            dim_x = parts[8]
+            dim_y = parts[9]
+            dim_z = parts[10]
+            loc_x = parts[11]
+            loc_y = parts[12]
+            loc_z = parts[13]
+            rotation_y = parts[14]
+            # not all KITTI-formatted files have a score field
+            if len(parts) == 16:
+                score = parts[15]
+            else:
+                score = " "
 
             if label in rename_labels:
                 # update the label
@@ -134,7 +138,25 @@ def clean_kitti(
                 bbox_max_y = img_height - 1
 
             # write the line back into the file in-place
-            kitti_parts = (label, truncated, occluded, alpha, bbox_min_x, bbox_min_y, bbox_max_x, bbox_max_y, dim_x, dim_y, dim_z, loc_x, loc_y, loc_z, rotation_y, score)
+            kitti_parts = [
+                label,
+                truncated,
+                occluded,
+                alpha,
+                f'{bbox_min_x:.1f}',
+                f'{bbox_min_y:.1f}',
+                f'{bbox_max_x:.1f}',
+                f'{bbox_max_y:.1f}',
+                dim_x,
+                dim_y,
+                dim_z,
+                loc_x,
+                loc_y,
+                loc_z,
+                rotation_y,
+            ]
+            if len(parts) == 16:
+                kitti_parts.append(score)
             print(" ".join(kitti_parts))
 
 
