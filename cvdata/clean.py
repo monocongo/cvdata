@@ -1,4 +1,5 @@
 import argparse
+import fileinput
 import logging
 import os
 import shutil
@@ -19,6 +20,122 @@ logging.basicConfig(
     datefmt="%Y-%m-%d  %H:%M:%S",
 )
 _logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------------------
+def clean_kitti(
+        labels_dir: str,
+        images_dir: str,
+        rename_labels: Dict,
+        problems_dir: str = None,
+):
+
+    # convert all PNG images to JPG, and remove the original PNG file
+    for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
+        png_file_path = os.path.join(images_dir, file_id + ".png")
+        png_to_jpg(png_file_path, remove_png=True)
+
+    # get a set of file IDs of the PASCAL VOC annotations and corresponding images
+    file_ids = matching_ids(labels_dir, images_dir, ".xml", ".jpg")
+
+    # make the problem files directory if necessary, in case it doesn't already exist
+    if problems_dir is not None:
+        os.makedirs(problems_dir, exist_ok=True)
+
+    # remove files that aren't matches
+    for dir in [labels_dir, images_dir]:
+        for file_name in os.listdir(dir):
+            # only filter out image and KITTI label files (this is
+            # needed in case a subdirectory exists in the directory)
+            if file_name.endswith(".xml") or file_name.endswith(".jpg"):
+                if os.path.splitext(file_name)[0] not in file_ids:
+                    unmatched_file = os.path.join(dir, file_name)
+                    if problems_dir is not None:
+                        shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
+                    else:
+                        os.remove(unmatched_file)
+
+    # loop over all the matching files and clean the KITTI annotations
+    for i, file_id in enumerate(file_ids):
+
+        # get the image width and height
+        jpg_file_name = file_id + ".jpg"
+        image_file_path = os.path.join(images_dir, jpg_file_name)
+        image = Image.open(image_file_path)
+        img_width, img_height = image.size
+
+        # update the image file name in the KITTI label file
+        src_annotation_file_path = os.path.join(labels_dir, file_id + ".txt")
+        for line in fileinput.input(src_annotation_file_path, inplace=True):
+
+            parts = line.split()
+            label = parts[0]
+            truncated = float(parts[1])
+            occluded = float(parts[2])
+            alpha = float(parts[3])
+            bbox_min_x = int(float(parts[4]))
+            bbox_min_y = int(float(parts[5]))
+            bbox_max_x = int(float(parts[6]))
+            bbox_max_y = int(float(parts[7]))
+            dim_x = float(parts[8])
+            dim_y = float(parts[9])
+            dim_z = float(parts[10])
+            loc_x = float(parts[11])
+            loc_y = float(parts[12])
+            loc_z = float(parts[13])
+            rotation_y = float(parts[14])
+            score = float(parts[15])
+
+            if label in rename_labels:
+                # update the label
+                label = rename_labels[label]
+
+            # make sure we don't have wonky bounding box values
+            # with mins > maxs, and if so we'll reverse them
+            if bbox_min_x > bbox_max_x:
+                # report the issue via log message
+                _logger.warning(
+                    "Bounding box minimum X is greater than the maximum X "
+                    f"in KITTI annotation file {src_annotation_file_path}",
+                )
+                tmp_holder = bbox_min_x
+                bbox_min_x = bbox_max_x
+                bbox_max_x = tmp_holder
+
+            if bbox_min_y > bbox_max_y:
+                # report the issue via log message
+                _logger.warning(
+                    "Bounding box minimum Y is greater than the maximum Y "
+                    f"in KITTI annotation file {src_annotation_file_path}",
+                )
+                tmp_holder = bbox_min_y
+                bbox_min_y = bbox_max_y
+                bbox_max_y = tmp_holder
+
+            # perform sanity checks on max values
+            if bbox_max_x >= img_width:
+                # report the issue via log message
+                _logger.warning(
+                    "Bounding box maximum X is greater than width in KITTI "
+                    f"annotation file {src_annotation_file_path}",
+                )
+
+                # fix the issue
+                bbox_max_x = img_width - 1
+
+            if bbox_max_y >= img_height:
+                # report the issue via log message
+                _logger.warning(
+                    "Bounding box maximum Y is greater than height in KITTI "
+                    f"annotation file {src_annotation_file_path}",
+                )
+
+                # fix the issue
+                bbox_max_y = img_height - 1
+
+            # write the line back into the file in-place
+            kitti_parts = (label, truncated, occluded, alpha, bbox_min_x, bbox_min_y, bbox_max_x, bbox_max_y, dim_x, dim_y, dim_z, loc_x, loc_y, loc_z, rotation_y, score)
+            print(" ".join(kitti_parts))
 
 
 # ------------------------------------------------------------------------------
@@ -195,7 +312,16 @@ if __name__ == "__main__":
             from_label, to_label = rename_labels.split(":")
             renames[from_label] = to_label
 
-    if args["format"] == "pascal":
+    if args["format"] == "kitti":
+
+        clean_kitti(
+            args["annotations_dir"],
+            args["images_dir"],
+            renames,
+            args["problems_dir"],
+        )
+
+    elif args["format"] == "pascal":
 
         clean_pascal(
             args["annotations_dir"],
@@ -203,3 +329,4 @@ if __name__ == "__main__":
             renames,
             args["problems_dir"],
         )
+
