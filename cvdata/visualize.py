@@ -29,6 +29,20 @@ def show_tfrecords(
         tfrecords_dir: str,
         image_directory: str,
 ):
+    """
+    Displays images with bounding box annotations from all TFRecord files in a
+    directory containing TFRecord files and an associated images directory
+    containing the corresponding image files.
+
+    The TFRecord format is assumed to be the one used by the NVIDIA Transfer
+    Learning Toolkit's KITTI to TFRecord dataset conversion tool, described here:
+    https://docs.nvidia.com/metropolis/TLT/tlt-getting-started-guide/index.html#conv_tfrecords_topic
+
+    :param tfrecords_dir: directory containing TFRecord files
+    :param image_directory: directory containing image files corresponding to
+        the examples contained within the vairious TFRecord files
+    """
+
     count = 0
     for tfrecords_file_name in os.listdir(tfrecords_dir):
 
