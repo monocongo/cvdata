@@ -72,7 +72,7 @@ def show_tfrecords(
                 cv2.putText(
                     img,
                     object_class_id[i].decode(),
-                    (int(x_min[i]), int(y_min[i])),
+                    (int(x_min[i] + 3), int(y_min[i]) + 6),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.45,
                     _TEXT_BGR,
@@ -401,7 +401,7 @@ if __name__ == "__main__":
                     cv2.putText(
                         image,
                         bbox["ClassName"],
-                        (bbox["XMin"], bbox["YMin"]),
+                        (bbox["XMin"] + 3, bbox["YMin"] + 6),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.45,
                         _TEXT_BGR,
@@ -485,7 +485,7 @@ if __name__ == "__main__":
                 cv2.putText(
                     image,
                     bbox["label"],
-                    (bbox["x"], bbox["y"]),
+                    (bbox["x"] + 3, bbox["y"] + 6),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.45,
                     _TEXT_BGR,
