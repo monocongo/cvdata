@@ -334,6 +334,9 @@ if __name__ == "__main__":
     #       --annotations /home/ubuntu/data/handgun/annotations/coco \
     #       --format coco
     #
+    # $ python <this_script.py> --images /nvidia/tlt/experiments/kitti/training/image_2 \
+    #       --annotations /nvidia/tlt/experiments/tfrecords/training \
+    #       --format tfrecord
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
