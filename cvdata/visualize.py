@@ -29,18 +29,38 @@ def show_tfrecords(
         tfrecords_dir: str,
         image_directory: str,
 ):
-    for tfrecords_file in os.listdir(tfrecords_dir):
-        tfrecords_iterator = tf.io.tf_record_iterator(tfrecords_file)
-        for record in tfrecords_iterator:
+    # Create a description of the features.
+    feature_description = {
+        'frame/id': tf.io.FixedLenFeature([], tf.string, default_value=''),
+        'frame/width': tf.io.FixedLenFeature([], tf.int64, default_value=0),
+        'frame/height': tf.io.FixedLenFeature([], tf.int64, default_value=0),
+        'target/coordinates_x1': tf.io.FixedLenFeature([], tf.float32, default_value=0.0),
+        'target/coordinates_x2': tf.io.FixedLenFeature([], tf.float32, default_value=0.0),
+        'target/coordinates_y1': tf.io.FixedLenFeature([], tf.float32, default_value=0.0),
+        'target/coordinates_y2': tf.io.FixedLenFeature([], tf.float32, default_value=0.0),
+        # 'feature2': tf.io.FixedLenFeature([], tf.string, default_value=''),
+        # 'feature3': tf.io.FixedLenFeature([], tf.float32, default_value=0.0),
+    }
 
-            example = tf.train.Example()
-            example.ParseFromString(record)
-            features = example.features.feature
+    # create a parse function that will be used to parse out features from individual examples
+    def _parse_function(example_proto):
+        # Parse the input `tf.Example` proto using the dictionary above.
+        return tf.io.parse_single_example(example_proto, feature_description)
 
-            x_min = features['target/coordinates_x1'].float_list.value
+    for tfrecords_file_name in os.listdir(tfrecords_dir):
+        tfrecords_file_path = os.path.join(tfrecords_dir, tfrecords_file_name)
+        tf_dataset = tf.data.TFRecordDataset(tfrecords_file_path)
+        parsed_dataset = tf_dataset.map(_parse_function)
+
+        # tfrecords_iterator = tf.io.tf_record_iterator(tfrecords_file)
+        # for record in tfrecords_iterator:
+
+        for features in parsed_dataset:
+
             frame_id = features['frame/id'].bytes_list.value.__str__()[3:-2]
             frame_width = int(features['frame/width'].int64_list.value.__str__()[1:-1])
             frame_height = int(features['frame/height'].int64_list.value.__str__()[1:-1])
+            x_min = features['target/coordinates_x1'].float_list.value
             x_max = features['target/coordinates_x2'].float_list.value
             y_min = features['target/coordinates_y1'].float_list.value
             y_max = features['target/coordinates_y2'].float_list.value
