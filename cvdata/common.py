@@ -1,4 +1,4 @@
-FORMAT_CHOICES = ["coco", "darknet", "kitti", "openimages", "pascal"]
+FORMAT_CHOICES = ["coco", "darknet", "kitti", "openimages", "pascal", "tfrecord"]
 
 FORMAT_EXTENSIONS = {
     "coco": ".json",
