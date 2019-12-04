@@ -7,8 +7,12 @@ from xml.etree import ElementTree
 
 import cv2
 import pandas as pd
+import tensorflow as tf
 
 from cvdata.common import FORMAT_CHOICES as format_choices
+
+_RECTANGLE_BGR = (0, 255, 0)
+_TEXT_BGR = (255, 0, 255)
 
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
@@ -18,6 +22,95 @@ logging.basicConfig(
     datefmt="%Y-%m-%d  %H:%M:%S",
 )
 _logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------------------
+def show_tfrecords(
+        tfrecords_dir: str,
+        image_directory: str,
+):
+    """
+    Displays images with bounding box annotations from all TFRecord files in a
+    directory containing TFRecord files and an associated images directory
+    containing the corresponding image files.
+
+    The TFRecord format is assumed to be the one used by the NVIDIA Transfer
+    Learning Toolkit's KITTI to TFRecord dataset conversion tool, described here:
+    https://docs.nvidia.com/metropolis/TLT/tlt-getting-started-guide/index.html#conv_tfrecords_topic
+
+    :param tfrecords_dir: directory containing TFRecord files
+    :param image_directory: directory containing image files corresponding to
+        the examples contained within the vairious TFRecord files
+    """
+
+    count = 0
+    for tfrecords_file_name in os.listdir(tfrecords_dir):
+
+        # parse each TFRecord file
+        tfrecords_file_path = os.path.join(tfrecords_dir, tfrecords_file_name)
+        tf_dataset = tf.data.TFRecordDataset(tfrecords_file_path)
+        for record in tf_dataset:
+
+            example = tf.train.Example()
+            example.ParseFromString(record.numpy())
+            feature = example.features.feature
+            frame_id = os.path.split(str(feature['frame/id'].bytes_list.value[0])[2:-1])[-1]
+            object_class_id = feature['target/object_class'].bytes_list.value
+            x_min = feature['target/coordinates_x1'].float_list.value
+            x_max = feature['target/coordinates_x2'].float_list.value
+            y_min = feature['target/coordinates_y1'].float_list.value
+            y_max = feature['target/coordinates_y2'].float_list.value
+            i = 0
+            current_image_path = str(os.path.join(image_directory, frame_id)) + '.jpg'
+            img = cv2.imread(current_image_path)
+            while i < len(x_min):
+                # draw bounding box
+                cv2.rectangle(img, (int(x_min[i]), int(y_min[i])),
+                              (int(x_max[i]), int(y_max[i])),
+                              _RECTANGLE_BGR, 2)
+                # draw the label
+                cv2.putText(
+                    img,
+                    object_class_id[i].decode(),
+                    (int(x_min[i]), int(y_min[i])),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45,
+                    _TEXT_BGR,
+                    1,
+                )
+                i += 1
+
+            # show the output image
+            _logger.info(f"{count} Displaying {len(x_min)} boxes for {current_image_path}")
+            cv2.imshow("Image", img)
+            cv2.waitKey(0)
+            count += 1
+
+    cv2.destroyAllWindows()
+
+
+# ------------------------------------------------------------------------------
+def bbox_tfrecord(
+        file_path: str,
+) -> List[dict]:
+    """
+    Returns the labeled bounding boxes from a COCO annotation (*.json) file.
+
+    :param file_path: path to a COCO annotation file
+    :return: list of bounding box dictionary objects with keys "label", "x",
+        "y", "w", and "h"
+    """
+    with open(file_path) as json_file:
+        data = json.load(json_file)
+
+    boxes = []
+    for annotation in data["annotations"]:
+
+        x, y, w, h = annotation["bbox"]
+        box = {"label": "", "x": x, "y": y, "w": w, "h": h}
+        boxes.append(box)
+
+    return boxes
 
 
 # ------------------------------------------------------------------------------
@@ -255,6 +348,9 @@ if __name__ == "__main__":
     #       --annotations /home/ubuntu/data/handgun/annotations/coco \
     #       --format coco
     #
+    # $ python <this_script.py> --images /nvidia/tlt/experiments/kitti/training/image_2 \
+    #       --annotations /nvidia/tlt/experiments/tfrecords/training \
+    #       --format tfrecord
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -298,7 +394,7 @@ if __name__ == "__main__":
                         image,
                         (bbox["XMin"], bbox["YMin"]),
                         (bbox["XMax"], bbox["YMax"]),
-                        (0, 255, 0),
+                        _RECTANGLE_BGR,
                         2,
                     )
                     # draw the label
@@ -308,7 +404,7 @@ if __name__ == "__main__":
                         (bbox["XMin"], bbox["YMin"]),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.45,
-                        (255, 0, 255),
+                        _TEXT_BGR,
                         1,
                     )
                 _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
@@ -316,6 +412,10 @@ if __name__ == "__main__":
                 # show the output image
                 cv2.imshow("Image", image)
                 cv2.waitKey(0)
+
+    elif args["format"] == "tfrecord":
+
+        show_tfrecords(args["annotations"], args["images"])
 
     else:
 
@@ -378,7 +478,7 @@ if __name__ == "__main__":
                     image,
                     (bbox["x"], bbox["y"]),
                     (bbox["x"] + bbox["w"], bbox["y"] + bbox["h"]),
-                    (0, 255, 0),
+                    _RECTANGLE_BGR,
                     2,
                 )
                 # draw the label
@@ -388,7 +488,7 @@ if __name__ == "__main__":
                     (bbox["x"], bbox["y"]),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.45,
-                    (255, 0, 255),
+                    _TEXT_BGR,
                     1,
                 )
             _logger.info(f"{count} Displaying {len(bboxes)} boxes for {image_file_name}")
