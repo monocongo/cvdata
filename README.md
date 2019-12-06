@@ -57,6 +57,27 @@ $ python clean.py --format pascal \
 >    --images_dir /data/datasets/delivery_truck/images \
 >    --rename_labels deivery:delivery
 ```
+
+## Split dataset into training, validation, and test subsets
+In order to split a dataset into training, validation, and test subsets we can 
+utilize the script `cvdata/split.py`. This script's CLI contains options for 
+specifying the source dataset's images and annotations directories and the destination 
+images and annotations directories for the respective train/valid/test subset splits. 
+The default split ratio is 70% training, 20% validation, and 10% testing but can 
+be modified with the `train_percentage`, `valid_percentage`, and `test_percentage` 
+arguments (these are float values and should sum to 1). For example: 
+```bash
+$ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
+> --images_dir /data/rifle/kitti/image_2 \
+> --train_annotations_dir /data/rifle/split/kitti/trainval/label_2 \
+> --train_images_dir /data/rifle/split/kitti/trainval/image_2 \
+> --val_annotations_dir /data/rifle/split/kitti/trainval/label_2 \
+> --val_images_dir /data/rifle/split/kitti/trainval/image_2 \
+> --test_annotations_dir /data/rifle/split/kitti/test/label_2 \
+> --test_images_dir /data/rifle/split/kitti/test/image_2 \
+> --format kitti --copy
+```
+
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py`. This script currently supports annotations in COCO (*.json), 
