@@ -21,7 +21,7 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def split_ids_train_valid(
+def _split_ids_train_valid(
         ids: List[str],
         train_pct: float,
 ) -> (List[str], List[str]):
@@ -86,7 +86,7 @@ def map_ids_to_paths(
 
 
 # ------------------------------------------------------------------------------
-def create_split_files(
+def create_split_files_darknet(
         images_dir: str,
         use_prefix: str,
         dest_dir: str,
@@ -120,7 +120,7 @@ def create_split_files(
         ids = list(set(images.keys()).intersection(annotations.keys()))
 
         # split the file IDs into training and validation lists
-        training_ids, validation_ids = split_ids_train_valid(ids, train_pct)
+        training_ids, validation_ids = _split_ids_train_valid(ids, train_pct)
 
         # create the destination directory in case it doesn't already exist
         os.makedirs(dest_dir, exist_ok=True)
