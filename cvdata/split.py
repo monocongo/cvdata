@@ -222,14 +222,20 @@ def split_train_valid_test_images(split_arguments: Dict):
     images = map_ids_to_paths(split_arguments["images_dir"], [".jpg", ".png"])
     ids = list(images.keys())
 
+    # confirm that the percentages all add to 100%
+    train_percentage, valid_percentage, test_percentage = \
+        [float(x) for x in split_arguments["split"].split(":")]
+    total_percentage = train_percentage + valid_percentage + test_percentage
+    if not math.isclose(1.0, total_percentage):
+        raise ValueError(
+            "Invalid argument values: the combined train/valid/test "
+            "percentages do not add to 1.0"
+        )
+
     # split the file IDs into training and validation lists
     # get the split based on the number of matching IDs and split percentages
-    final_train_index = int(round(split_arguments["train_percentage"] * len(ids)))
-    final_valid_index = \
-        int(round((split_arguments["train_percentage"] +
-                   split_arguments["valid_percentage"]) * len(ids)
-                  )
-            )
+    final_train_index = int(round(train_percentage * len(ids)))
+    final_valid_index = int(round((train_percentage + valid_percentage) * len(ids)))
     random.shuffle(ids)
     training_ids = ids[:final_train_index]
     validation_ids = ids[final_train_index:final_valid_index]
@@ -289,7 +295,8 @@ def split_train_valid_test_dataset(split_arguments: Dict):
     ids = list(set(images.keys()).intersection(annotations.keys()))
 
     # confirm that the percentages all add to 100%
-    train_percentage, valid_percentage, test_percentage = float(split_arguments["split"].split(":"))
+    train_percentage, valid_percentage, test_percentage = \
+        [float(x) for x in split_arguments["split"].split(":")]
     total_percentage = train_percentage + valid_percentage + test_percentage
     if not math.isclose(1.0, total_percentage):
         raise ValueError(
@@ -299,7 +306,7 @@ def split_train_valid_test_dataset(split_arguments: Dict):
 
     # split the file IDs into training and validation lists
     # get the split based on the number of matching IDs and split percentages
-    final_train_index = int(round(split_arguments["train_percentage"] * len(ids)))
+    final_train_index = int(round(train_percentage * len(ids)))
     final_valid_index = int(round((train_percentage + valid_percentage) * len(ids)))
     random.shuffle(ids)
     training_ids = ids[:final_train_index]
