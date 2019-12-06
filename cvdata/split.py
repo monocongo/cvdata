@@ -288,14 +288,19 @@ def split_train_valid_test_dataset(split_arguments: Dict):
     # find matching image/annotation file IDs
     ids = list(set(images.keys()).intersection(annotations.keys()))
 
+    # confirm that the percentages all add to 100%
+    train_percentage, valid_percentage, test_percentage = float(split_arguments["split"].split(":"))
+    total_percentage = train_percentage + valid_percentage + test_percentage
+    if not math.isclose(1.0, total_percentage):
+        raise ValueError(
+            "Invalid argument values: the combined train/valid/test "
+            "percentages do not add to 1.0"
+        )
+
     # split the file IDs into training and validation lists
     # get the split based on the number of matching IDs and split percentages
     final_train_index = int(round(split_arguments["train_percentage"] * len(ids)))
-    final_valid_index = \
-        int(round((split_arguments["train_percentage"] +
-                   split_arguments["valid_percentage"]) * len(ids)
-                  )
-            )
+    final_valid_index = int(round((train_percentage + valid_percentage) * len(ids)))
     random.shuffle(ids)
     training_ids = ids[:final_train_index]
     validation_ids = ids[final_train_index:final_valid_index]
@@ -415,28 +420,12 @@ if __name__ == "__main__":
              "files for testing",
     )
     args_parser.add_argument(
-        "--train_percentage",
+        "--split",
         required=False,
-        type=float,
-        default=0.7,
-        help="percentage of files to use for training "
-             "(value should be between 0.0 and 1.0)",
-    )
-    args_parser.add_argument(
-        "--valid_percentage",
-        required=False,
-        type=float,
-        default=0.2,
-        help="percentage of files to use for validation "
-             "(value should be between 0.0 and 1.0)",
-    )
-    args_parser.add_argument(
-        "--test_percentage",
-        required=False,
-        type=float,
-        default=0.1,
-        help="percentage of files to use for training "
-             "(value should be between 0.0 and 1.0)",
+        type=str,
+        default="0.7:0.2:0.1",
+        help="colon-separated triple of percentages to use for training, "
+             "validation, and testing (values should sum to 1.0)",
     )
     args_parser.add_argument(
         "--format",
@@ -453,17 +442,6 @@ if __name__ == "__main__":
         help="move source files to destination rather than copying",
     )
     args = vars(args_parser.parse_args())
-
-    # confirm that the percentages all add to 100%
-    total_percentage = \
-        float(args["train_percentage"]) + \
-        float(args["valid_percentage"]) + \
-        float(args["test_percentage"])
-    if not math.isclose(1.0, total_percentage):
-        raise ValueError(
-            "Invalid argument values: the combined train/valid/test "
-            "percentages do not add to 1.0"
-        )
 
     # split files from the images and annotations
     # directories into training and validation sets
