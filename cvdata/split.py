@@ -21,7 +21,7 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def split_ids_train_valid(
+def _split_ids_train_valid(
         ids: List[str],
         train_pct: float,
 ) -> (List[str], List[str]):
@@ -86,7 +86,7 @@ def map_ids_to_paths(
 
 
 # ------------------------------------------------------------------------------
-def create_split_files(
+def create_split_files_darknet(
         images_dir: str,
         use_prefix: str,
         dest_dir: str,
@@ -120,7 +120,7 @@ def create_split_files(
         ids = list(set(images.keys()).intersection(annotations.keys()))
 
         # split the file IDs into training and validation lists
-        training_ids, validation_ids = split_ids_train_valid(ids, train_pct)
+        training_ids, validation_ids = _split_ids_train_valid(ids, train_pct)
 
         # create the destination directory in case it doesn't already exist
         os.makedirs(dest_dir, exist_ok=True)
@@ -142,7 +142,7 @@ def create_split_files(
 
 # ------------------------------------------------------------------------------
 def _relocate_files(
-        copy_files: bool,
+        move_files: bool,
         file_ids: List[str],
         file_paths: Dict,
         dest_dir: str,
@@ -150,41 +150,41 @@ def _relocate_files(
     """
     TODO
 
-    :param copy_files: whether or not to copy the files (move files if false)
+    :param move_files: whether or not to move the files (copy files if false)
     :param file_ids: file IDs for annotation and image files to be copied/moved
     :param file_paths: dictionary of file IDs to image file paths
     :param dest_dir: destination directory for image files
     :return: 0 indicates success
     """
 
-    def relocate_file(copy_file: bool, src_file_path: str, dest_directory: str):
+    def relocate_file(move_file: bool, src_file_path: str, dest_directory: str):
         """
         TODO
 
-        :param copy_file whether or not to copy the files (move files if false)
+        :param move_file whether or not to move the files (copy files if false)
         :param src_file_path: absolute path of source file to be copied
-        :param dest_directory: destination directory for the file copy
+        :param dest_directory: destination directory for the file copy/move
         :return: 0 indicates success
         """
 
         file_name = os.path.basename(src_file_path)
         dest_file_path = os.path.join(dest_directory, file_name)
-        if copy_file:
-            shutil.copy2(src_file_path, dest_file_path)
-        else:
+        if move_file:
             shutil.move(src_file_path, dest_file_path)
+        else:
+            shutil.copy2(src_file_path, dest_file_path)
         return 0
 
     # copy or move the files into the destination directory
     for file_id in file_ids:
-        relocate_file(copy_files, file_paths[file_id], dest_dir)
+        relocate_file(move_files, file_paths[file_id], dest_dir)
 
     return 0
 
 
 # ------------------------------------------------------------------------------
 def _relocate_files_dataset(
-        copy_files: bool,
+        move_files: bool,
         file_ids: List[str],
         annotation_paths: Dict,
         annotations_dest_dir: str,
@@ -194,7 +194,7 @@ def _relocate_files_dataset(
     """
     TODO
 
-    :param copy_files: whether or not to copy the files (move files if false)
+    :param move_files: whether or not to move the files (copy files if false)
     :param file_ids: file IDs for annotation and image files to be copied/moved
     :param annotation_paths: dictionary of file IDs to annotation file paths
     :param annotations_dest_dir: destination directory for annotation files
@@ -204,7 +204,7 @@ def _relocate_files_dataset(
     """
 
     for paths, dest_dir in zip([annotation_paths, image_paths], [annotations_dest_dir, images_dest_dir]):
-        _relocate_files(copy_files, file_ids, paths, dest_dir)
+        _relocate_files(move_files, file_ids, paths, dest_dir)
 
     return 0
 
@@ -222,44 +222,50 @@ def split_train_valid_test_images(split_arguments: Dict):
     images = map_ids_to_paths(split_arguments["images_dir"], [".jpg", ".png"])
     ids = list(images.keys())
 
+    # confirm that the percentages all add to 100%
+    train_percentage, valid_percentage, test_percentage = \
+        [float(x) for x in split_arguments["split"].split(":")]
+    total_percentage = train_percentage + valid_percentage + test_percentage
+    if not math.isclose(1.0, total_percentage):
+        raise ValueError(
+            "Invalid argument values: the combined train/valid/test "
+            "percentages do not add to 1.0"
+        )
+
     # split the file IDs into training and validation lists
     # get the split based on the number of matching IDs and split percentages
-    final_train_index = int(round(split_arguments["train_percentage"] * len(ids)))
-    final_valid_index = \
-        int(round((split_arguments["train_percentage"] +
-                   split_arguments["valid_percentage"]) * len(ids)
-                  )
-            )
+    final_train_index = int(round(train_percentage * len(ids)))
+    final_valid_index = int(round((train_percentage + valid_percentage) * len(ids)))
     random.shuffle(ids)
     training_ids = ids[:final_train_index]
     validation_ids = ids[final_train_index:final_valid_index]
     testing_ids = ids[final_valid_index:]
 
-    # copy images and annotations into the training directories
+    # relocate images and annotations into the training directories
     _logger.info("Splitting files for the training set into "
                  f"{split_arguments['train_images_dir']}")
     _relocate_files(
-        split_arguments["copy_feature"],
+        split_arguments["move"],
         training_ids,
         images,
         split_arguments["train_images_dir"]
     )
 
-    # copy images and annotations into the validation directories
+    # relocate images and annotations into the validation directories
     _logger.info("Splitting files for the validation set into "
                  f"{split_arguments['val_images_dir']}")
     _relocate_files(
-        split_arguments["copy_feature"],
+        split_arguments["move"],
         validation_ids,
         images,
         split_arguments["val_images_dir"]
     )
 
-    # copy images and annotations into the testing directories
+    # relocate images and annotations into the testing directories
     _logger.info("Splitting files for the testing set into "
                  f"{split_arguments['test_images_dir']}")
     _relocate_files(
-        split_arguments["copy_feature"],
+        split_arguments["move"],
         testing_ids,
         images,
         split_arguments["test_images_dir"]
@@ -288,25 +294,31 @@ def split_train_valid_test_dataset(split_arguments: Dict):
     # find matching image/annotation file IDs
     ids = list(set(images.keys()).intersection(annotations.keys()))
 
+    # confirm that the percentages all add to 100%
+    train_percentage, valid_percentage, test_percentage = \
+        [float(x) for x in split_arguments["split"].split(":")]
+    total_percentage = train_percentage + valid_percentage + test_percentage
+    if not math.isclose(1.0, total_percentage):
+        raise ValueError(
+            "Invalid argument values: the combined train/valid/test "
+            "percentages do not add to 1.0"
+        )
+
     # split the file IDs into training and validation lists
     # get the split based on the number of matching IDs and split percentages
-    final_train_index = int(round(split_arguments["train_percentage"] * len(ids)))
-    final_valid_index = \
-        int(round((split_arguments["train_percentage"] +
-                   split_arguments["valid_percentage"]) * len(ids)
-                  )
-            )
+    final_train_index = int(round(train_percentage * len(ids)))
+    final_valid_index = int(round((train_percentage + valid_percentage) * len(ids)))
     random.shuffle(ids)
     training_ids = ids[:final_train_index]
     validation_ids = ids[final_train_index:final_valid_index]
     testing_ids = ids[final_valid_index:]
 
-    # copy images and annotations into the training directories
+    # relocate images and annotations into the training directories
     _logger.info("Splitting files for the training set into "
                  f"{split_arguments['train_images_dir']} "
                  f"and {split_arguments['train_annotations_dir']}")
     _relocate_files_dataset(
-        split_arguments["copy_feature"],
+        split_arguments["move"],
         training_ids,
         annotations,
         split_arguments["train_annotations_dir"],
@@ -314,12 +326,12 @@ def split_train_valid_test_dataset(split_arguments: Dict):
         split_arguments["train_images_dir"]
     )
 
-    # copy images and annotations into the validation directories
+    # relocate images and annotations into the validation directories
     _logger.info("Splitting files for the validation set into "
                  f"{split_arguments['val_images_dir']} "
                  f"and {split_arguments['val_annotations_dir']}")
     _relocate_files_dataset(
-        split_arguments["copy_feature"],
+        split_arguments["move"],
         validation_ids,
         annotations,
         split_arguments["val_annotations_dir"],
@@ -327,12 +339,12 @@ def split_train_valid_test_dataset(split_arguments: Dict):
         split_arguments["val_images_dir"]
     )
 
-    # copy images and annotations into the testing directories
+    # relocate images and annotations into the testing directories
     _logger.info("Splitting files for the testing set into "
                  f"{split_arguments['test_images_dir']} "
                  f"and {split_arguments['test_annotations_dir']}")
     _relocate_files_dataset(
-        split_arguments["copy_feature"],
+        split_arguments["move"],
         testing_ids,
         annotations,
         split_arguments["test_annotations_dir"],
@@ -415,28 +427,12 @@ if __name__ == "__main__":
              "files for testing",
     )
     args_parser.add_argument(
-        "--train_percentage",
+        "--split",
         required=False,
-        type=float,
-        default=0.7,
-        help="percentage of files to use for training "
-             "(value should be between 0.0 and 1.0)",
-    )
-    args_parser.add_argument(
-        "--valid_percentage",
-        required=False,
-        type=float,
-        default=0.2,
-        help="percentage of files to use for validation "
-             "(value should be between 0.0 and 1.0)",
-    )
-    args_parser.add_argument(
-        "--test_percentage",
-        required=False,
-        type=float,
-        default=0.1,
-        help="percentage of files to use for training "
-             "(value should be between 0.0 and 1.0)",
+        type=str,
+        default="0.7:0.2:0.1",
+        help="colon-separated triple of percentages to use for training, "
+             "validation, and testing (values should sum to 1.0)",
     )
     args_parser.add_argument(
         "--format",
@@ -446,32 +442,13 @@ if __name__ == "__main__":
         choices=cvdata.common.FORMAT_CHOICES,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
-    # add an option that defaults to copying files, otherwise files will be moved
     args_parser.add_argument(
-        "--copy",
-        dest="copy_feature",
-        action="store_true",
-        help="Copy files, leaving the originals in place"
+        "--move",
+        default=False,
+        action='store_true',
+        help="move source files to destination rather than copying",
     )
-    args_parser.add_argument(
-        "--no_copy",
-        dest="copy_feature",
-        action="store_false",
-        help="Move the files",
-    )
-    args_parser.set_defaults(copy_feature=True)
     args = vars(args_parser.parse_args())
-
-    # confirm that the percentages all add to 100%
-    total_percentage = \
-        float(args["train_percentage"]) + \
-        float(args["valid_percentage"]) + \
-        float(args["test_percentage"])
-    if not math.isclose(1.0, total_percentage):
-        raise ValueError(
-            "Invalid argument values: the combined train/valid/test "
-            "percentages do not add to 1.0"
-        )
 
     # split files from the images and annotations
     # directories into training and validation sets

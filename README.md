@@ -64,8 +64,8 @@ utilize the script `cvdata/split.py`. This script's CLI contains options for
 specifying the source dataset's images and annotations directories and the destination 
 images and annotations directories for the respective train/valid/test subset splits. 
 The default split ratio is 70% training, 20% validation, and 10% testing but can 
-be modified with the `train_percentage`, `valid_percentage`, and `test_percentage` 
-arguments (these are float values and should sum to 1). For example: 
+be modified with the `--percentages`argument (these are colon-separated float 
+values and should sum to 1). For example: 
 ```bash
 $ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --images_dir /data/rifle/kitti/image_2 \
@@ -75,7 +75,7 @@ $ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --val_images_dir /data/rifle/split/kitti/trainval/image_2 \
 > --test_annotations_dir /data/rifle/split/kitti/test/label_2 \
 > --test_images_dir /data/rifle/split/kitti/test/image_2 \
-> --format kitti --copy
+> --format kitti --split 0.65:0.25:0.1 --move
 ```
 
 ## Visualize annotations
