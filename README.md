@@ -25,6 +25,14 @@ $ python resize.py --input_images /ssd_training/kitti/image_2 \
     --width 1024 --height 768 --format kitti
 ```
 
+We can also resize all images in a directory by using the same command as above 
+but without an annotation directory, extension, or format specified:
+```bash
+$ python resize.py --input_images /ssd_training/kitti/image_2 \
+    --output_images /ssd_training/kitti/image_2 \
+    --width 1024 --height 768
+```
+
 ## Convert annotation formats
 In order to convert from one annotation format to another use the script 
 `cvdata/convert.py`. This script currently supports converting annotations from 
