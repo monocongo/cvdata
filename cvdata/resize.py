@@ -84,7 +84,7 @@ def _get_resized_image(
 
 
 # ------------------------------------------------------------------------------
-def _resize_image(arguments: Dict):
+def _resize_image_label(arguments: Dict):
     """
     Wrapper function to be used for mapping to an iterable of arguments that
     will be passed to the resizing function.
@@ -93,7 +93,7 @@ def _resize_image(arguments: Dict):
     :return:
     """
 
-    resize_image(
+    resize_image_label(
         arguments["file_id"],
         arguments["image_ext"],
         arguments["annotation_ext"],
@@ -108,7 +108,64 @@ def _resize_image(arguments: Dict):
 
 
 # ------------------------------------------------------------------------------
+def _resize_image(arguments: Dict):
+    """
+    Wrapper function to be used for mapping to an iterable of arguments that
+    will be passed to the resizing function.
+
+    :param arguments:
+    :return:
+    """
+
+    resize_image(
+        arguments["file_name"],
+        arguments["input_images_dir"],
+        arguments["output_images_dir"],
+        arguments["new_width"],
+        arguments["new_height"],
+    )
+
+
+# ------------------------------------------------------------------------------
 def resize_image(
+        file_name: str,
+        input_images_dir: str,
+        output_images_dir: str,
+        new_width: int,
+        new_height: int,
+) -> int:
+    """
+    Resizes an image.
+
+    :param file_name: file name of the image file
+    :param input_images_dir: directory where image file is located
+    :param output_images_dir: directory where the resized image file
+        should be written
+    :param new_width: new width to which the image should be resized
+    :param new_height: new height to which the image should be resized
+    :return: 0 to indicate successful completion
+    """
+
+    # read the image data into a numpy array and get the dimensions
+    image_path = os.path.join(input_images_dir, file_name)
+    image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    original_height, original_width = image.shape[:2]
+
+    # resize if necessary
+    if (original_width != new_width) or (original_height != new_height):
+        image, scale_x, scale_y = _get_resized_image(image, new_width, new_height)
+    else:
+        scale_x = scale_y = 1.0
+
+    # write the scaled/padded image to file in the output directory
+    resized_image_path = os.path.join(output_images_dir, file_name)
+    cv2.imwrite(resized_image_path, image)
+
+    return 0
+
+
+# ------------------------------------------------------------------------------
+def resize_image_label(
         file_id: str,
         image_ext: str,
         annotation_ext: str,
@@ -240,7 +297,7 @@ def resize_image(
 
 
 # ------------------------------------------------------------------------------
-def resize_images(
+def resize_dataset(
         input_images_dir: str,
         input_annotations_dir: str,
         output_images_dir: str,
@@ -308,12 +365,72 @@ def resize_images(
         _logger.info("Resizing files")
 
         # use the executor to map the download function to the iterable of arguments
+        list(tqdm(executor.map(_resize_image_label, resize_arguments_list),
+                  total=len(resize_arguments_list)))
+
+
+# ------------------------------------------------------------------------------
+def resize_images(
+        input_images_dir: str,
+        output_images_dir: str,
+        new_width: int,
+        new_height: int,
+):
+    """
+    Resizes all images and corresponding annotations located within the
+    specified directories.
+
+    :param input_images_dir: directory where image files are located
+    :param output_images_dir: directory where resized image files should be written
+    :param new_width: new width to which the image should be resized
+    :param new_height: new height to which the image should be resized
+    :return: the number of resized image/annotation files
+    """
+
+    # create the destination directories in case they don't already exist
+    os.makedirs(output_images_dir, exist_ok=True)
+
+    resize_arguments_list = []
+    for file_name in os.listdir(input_images_dir):
+        if file_name.endswith(".jpg") or file_name.endswith(".png"):
+            resize_arguments = {
+                "file_name": file_name,
+                "input_images_dir": input_images_dir,
+                "output_images_dir": output_images_dir,
+                "new_width": new_width,
+                "new_height": new_height,
+            }
+            resize_arguments_list.append(resize_arguments)
+
+    # use a ProcessPoolExecutor to download the images in parallel
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+
+        _logger.info("Resizing files")
+
+        # use the executor to map the download function to the iterable of arguments
         list(tqdm(executor.map(_resize_image, resize_arguments_list),
                   total=len(resize_arguments_list)))
 
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
+
+    # Example usages:
+    #
+    # Resize all images in a specified directory:
+    #
+    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
+    #     --output_images /ssd_training/kitti/image_2 \
+    #     --width 1024 --height 768
+    #
+    #
+    # Resize images and update the corresponding annotations:
+    #
+    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
+    #     --input_annotations /ssd_training/kitti/label_2 \
+    #     --output_images /ssd_training/kitti/image_2 \
+    #     --output_annotations /ssd_training/kitti/label_2 \
+    #     --width 1024 --height 768 --format kitti
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -331,13 +448,13 @@ if __name__ == "__main__":
     )
     args_parser.add_argument(
         "--input_annotations",
-        required=True,
+        required=False,
         type=str,
         help="directory path of original annotations",
     )
     args_parser.add_argument(
         "--output_annotations",
-        required=True,
+        required=False,
         type=str,
         help="directory path of resized annotations",
     )
@@ -363,12 +480,25 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
-    resize_images(
-        args["input_images"],
-        args["input_annotations"],
-        args["output_images"],
-        args["output_annotations"],
-        args["width"],
-        args["height"],
-        args["format"],
-    )
+    if args["input_annotations"] is None:
+
+        # resize only images
+        resize_images(
+            args["input_images"],
+            args["output_images"],
+            args["width"],
+            args["height"],
+        )
+
+    else:
+
+        # resize images and modify corresponding annotation files accordingly
+        resize_dataset(
+            args["input_images"],
+            args["input_annotations"],
+            args["output_images"],
+            args["output_annotations"],
+            args["width"],
+            args["height"],
+            args["format"],
+        )
