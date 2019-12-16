@@ -415,6 +415,23 @@ def resize_images(
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
 
+    # Example usages:
+    #
+    # Resize all images in a specified directory:
+    #
+    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
+    #     --output_images /ssd_training/kitti/image_2 \
+    #     --width 1024 --height 768
+    #
+    #
+    # Resize images and update the corresponding annotations:
+    #
+    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
+    #     --input_annotations /ssd_training/kitti/label_2 \
+    #     --output_images /ssd_training/kitti/image_2 \
+    #     --output_annotations /ssd_training/kitti/label_2 \
+    #     --width 1024 --height 768 --format kitti
+
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
@@ -465,6 +482,7 @@ if __name__ == "__main__":
 
     if args["input_annotations"] is None:
 
+        # resize only images
         resize_images(
             args["input_images"],
             args["output_images"],
@@ -473,6 +491,8 @@ if __name__ == "__main__":
         )
 
     else:
+
+        # resize images and modify corresponding annotation files accordingly
         resize_dataset(
             args["input_images"],
             args["input_annotations"],
