@@ -375,8 +375,7 @@ if __name__ == "__main__":
         "--annotations_dir",
         required=False,
         type=str,
-        help="path to directory containing "
-             "PASCAL VOC annotation XML files",
+        help="path to directory containing annotation files",
     )
     args_parser.add_argument(
         "--images_dir",
@@ -388,43 +387,37 @@ if __name__ == "__main__":
         "--train_annotations_dir",
         required=False,
         type=str,
-        help="path to new directory containing "
-             "PASCAL VOC annotation XML files for training",
+        help="path to new directory containing annotation files for training",
     )
     args_parser.add_argument(
         "--train_images_dir",
         required=True,
         type=str,
-        help="path to new directory containing image "
-             "files for training",
+        help="path to new directory containing image files for training",
     )
     args_parser.add_argument(
         "--val_annotations_dir",
         required=False,
         type=str,
-        help="path to new directory containing PASCAL "
-             "VOC annotation XML files for validation",
+        help="path to new directory containing annotation files for validation",
     )
     args_parser.add_argument(
         "--val_images_dir",
         required=True,
         type=str,
-        help="path to new directory containing image "
-             "files for validation",
+        help="path to new directory containing image files for validation",
     )
     args_parser.add_argument(
         "--test_annotations_dir",
         required=False,
         type=str,
-        help="path to new directory containing "
-             "PASCAL VOC annotation XML files for testing",
+        help="path to new directory containing annotation files for testing",
     )
     args_parser.add_argument(
         "--test_images_dir",
         required=True,
         type=str,
-        help="path to new directory containing image "
-             "files for testing",
+        help="path to new directory containing image files for testing",
     )
     args_parser.add_argument(
         "--split",
@@ -446,7 +439,7 @@ if __name__ == "__main__":
         "--move",
         default=False,
         action='store_true',
-        help="move source files to destination rather than copying",
+        help="move the source files to their destinations rather than copying",
     )
     args = vars(args_parser.parse_args())
 
