@@ -376,20 +376,23 @@ def openimages_to_pascal(
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    """
-    Usage: PASCAL to KITTI
-    $ python convert.py --annotations_dir ~/datasets/handgun/annotations/pascal \
-        --images_dir ~/datasets/handgun/images \
-        --out_dir ~/datasets/handgun/kitti \
-        --in_format pascal --out_format kitti \
-        --kitti_ids_file file_ids.txt
-        
-    Usage: PASCAL to OpenImages
-    $ python convert.py --annotations_dir ~/datasets/handgun/pascal \
-        --images_dir ~/datasets/handgun/images \
-        --out_dir ~/datasets/handgun/openimages \
-        --in_format pascal --out_format openimages
-    """
+
+    # Usage: PASCAL to KITTI
+    # $ python convert.py --annotations_dir ~/datasets/handgun/annotations/pascal \
+    #     --images_dir ~/datasets/handgun/images \
+    #     --out_dir ~/datasets/handgun/kitti \
+    #     --in_format pascal --out_format kitti \
+    #     --kitti_ids_file file_ids.txt
+    #
+    # Usage: PASCAL to OpenImages
+    # $ python convert.py --annotations_dir ~/datasets/handgun/pascal \
+    #     --images_dir ~/datasets/handgun/images \
+    #     --out_dir ~/datasets/handgun/openimages \
+    #     --in_format pascal --out_format openimages
+    #
+    # Usage: bulk PNG to JPG image conversion
+    # $ python convert.py --in_format png --out_format jpg \
+    #     --images_dir /datasets/vehicle/usps
 
     # parse the command line arguments
     format_choices = ["coco", "darknet", "kitti", "openimages", "pascal"]
