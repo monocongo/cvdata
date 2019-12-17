@@ -395,7 +395,6 @@ if __name__ == "__main__":
     #     --images_dir /datasets/vehicle/usps
 
     # parse the command line arguments
-    format_choices = ["coco", "darknet", "kitti", "openimages", "pascal"]
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
         "--annotations_dir",
