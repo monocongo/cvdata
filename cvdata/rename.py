@@ -3,6 +3,7 @@ import os
 
 from cvdata.common import FORMAT_CHOICES
 
+
 # ------------------------------------------------------------------------------
 def rename_image_files(
         images_dir: str,
@@ -13,7 +14,7 @@ def rename_image_files(
     supported_extensions = ("gif", "jpg", "jpeg", "png",)
     current = start
     for file_name in os.listdir(images_dir):
-        file_id, ext = os.path.splitext(file_name)
+        _, ext = os.path.splitext(file_name)
         if ext[1:].lower() in supported_extensions:
             new_file_name = f"{prefix}_{str(current).zfill(digits)}{ext}"
             new_file_path = os.path.join(images_dir, new_file_name)
@@ -26,7 +27,7 @@ def rename_image_files(
 if __name__ == "__main__":
 
     # Usage: rename names of dataset files (images and annotations)
-    # $ python rename.py --annotations_dir ~/datasets/handgun/annotations/pascal \
+    # $ python rename.py --annotations_dir ~/datasets/handgun/kitti \
     #     --images_dir ~/datasets/handgun/images \
     #     --prefix handgun --start 100 --digits 6 \
     #     --format kitti --kitti_ids_file file_ids.txt
