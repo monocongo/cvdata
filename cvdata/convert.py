@@ -161,7 +161,7 @@ def images_png_to_jpg(
     for file_name in tqdm(os.listdir(images_dir)):
         file_id, ext = os.path.splitext(file_name)
         if ext.lower() == ".png":
-            png_file_path = os.path.join((images_dir, file_name))
+            png_file_path = os.path.join(images_dir, file_name)
             png_to_jpg(png_file_path, True)
 
 
