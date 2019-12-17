@@ -33,6 +33,27 @@ $ python resize.py --input_images /ssd_training/kitti/image_2 \
     --width 1024 --height 768
 ```
 
+## Rename files
+In order to perform bulk renaming of image files we provide the script 
+`cvdata/rename.py`. This allows us to specify a directory containing image files, 
+all of which will be renamed according to the `--prefix` (the prefix used for the 
+resulting file names), `--start` (the initial number in the enumeration part of 
+the new file names), and `--digits` (width of the enumeration part of the new 
+file names) arguments. For example: 
+```bash
+    # Usage: rename names of image files (images only)
+    # $ python rename.py --images_dir ~/datasets/handgun/images \
+    #     --prefix handgun --start 100 --digits 6
+```
+In a future release we'll support renaming of image and corresponding annotation 
+files. For example:
+```bash
+$ python rename.py --annotations_dir ~/datasets/handgun/kitti \
+>  --images_dir ~/datasets/handgun/images \
+> --prefix handgun --start 100 --digits 6 \
+> --format kitti --kitti_ids_file file_ids.txt
+```
+
 ## Convert annotation formats
 In order to convert from one annotation format to another use the script 
 `cvdata/convert.py`. This script currently supports converting annotations from 
