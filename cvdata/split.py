@@ -373,7 +373,7 @@ if __name__ == "__main__":
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
         "--annotations_dir",
-        required=True,
+        required=False,
         type=str,
         help="path to directory containing "
              "PASCAL VOC annotation XML files",
@@ -386,7 +386,7 @@ if __name__ == "__main__":
     )
     args_parser.add_argument(
         "--train_annotations_dir",
-        required=True,
+        required=False,
         type=str,
         help="path to new directory containing "
              "PASCAL VOC annotation XML files for training",
@@ -400,7 +400,7 @@ if __name__ == "__main__":
     )
     args_parser.add_argument(
         "--val_annotations_dir",
-        required=True,
+        required=False,
         type=str,
         help="path to new directory containing PASCAL "
              "VOC annotation XML files for validation",
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     )
     args_parser.add_argument(
         "--test_annotations_dir",
-        required=True,
+        required=False,
         type=str,
         help="path to new directory containing "
              "PASCAL VOC annotation XML files for testing",
@@ -450,6 +450,11 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
-    # split files from the images and annotations
-    # directories into training and validation sets
-    split_train_valid_test_dataset(args)
+    if args["annotations_dir"] is None:
+        # split files from the images directory
+        # into training, validation, and test sets
+        split_train_valid_test_images(args)
+    else:
+        # split files from the images and annotations
+        # directories into training, validation, and test sets
+        split_train_valid_test_dataset(args)
