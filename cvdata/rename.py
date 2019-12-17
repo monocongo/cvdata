@@ -59,9 +59,8 @@ if __name__ == "__main__":
         "--kitti_ids_file",
         required=False,
         type=str,
-        help="name of the file that will contain the file IDs for KITTI, "
-             "required if out_format is \"kitti\", will be written into the "
-             "parent directory of the output directory for KITTI data",
+        help="name of the file that contains the file IDs for a dataset with "
+             "annotations in KITTI format",
     )
     args_parser.add_argument(
         "--digits",
