@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 import cv2
 from tqdm import tqdm
 
+from cvdata.common import FORMAT_CHOICES
 from cvdata.split import split_train_valid_test_images
 from cvdata.utils import matching_ids
 
@@ -148,6 +149,20 @@ def pascal_to_kitti(
 
     # return the number of annotations converted
     return len(file_ids)
+
+
+# ------------------------------------------------------------------------------
+def images_png_to_jpg(
+        images_dir: str,
+):
+
+    _logger.info(f"Converting all PNG files in directory {images_dir} to JPG")
+
+    for file_name in tqdm(os.listdir(images_dir)):
+        file_id, ext = os.path.splitext(file_name)
+        if ext.lower() == ".png":
+            png_file_path = os.path.join((images_dir, file_name))
+            png_to_jpg(png_file_path, True)
 
 
 # ------------------------------------------------------------------------------
@@ -381,7 +396,7 @@ if __name__ == "__main__":
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
         "--annotations_dir",
-        required=True,
+        required=False,
         type=str,
         help="path to directory containing input annotation files to be converted",
     )
@@ -416,15 +431,15 @@ if __name__ == "__main__":
         "--in_format",
         required=True,
         type=str,
-        choices=format_choices,
-        help="format of input annotations",
+        choices=FORMAT_CHOICES.append("png"),
+        help="format of input annotations or images",
     )
     args_parser.add_argument(
         "--out_format",
         required=True,
         type=str,
-        choices=format_choices,
-        help="format of output annotations",
+        choices=FORMAT_CHOICES.append("jpg"),
+        help="format of output annotations or images",
     )
     args = vars(args_parser.parse_args())
 
@@ -465,6 +480,14 @@ if __name__ == "__main__":
                 args["out_dir"],
                 args["split"],
             )
+        else:
+            raise ValueError(
+                "Unsupported format conversion: "
+                f"{args['in_format']} to {args['out_format']}",
+            )
+    elif args["in_format"] == "png":
+        if args["out_format"] == "jpg":
+            images_png_to_jpg(args["images_dir"])
         else:
             raise ValueError(
                 "Unsupported format conversion: "
