@@ -115,10 +115,11 @@ def pascal_to_kitti(
     file_ids = matching_ids(pascal_dir, images_dir, pascal_ext, img_ext)
 
     # write the KITTI file IDs file in the KITTI data directory's parent directory
-    kitti_ids_file_path = os.path.join(Path(kitti_data_dir).parent, kitti_ids_file_name)
-    with open(kitti_ids_file_path, "w") as kitti_ids_file:
-        for file_id in file_ids:
-            kitti_ids_file.write(f"{file_id}\n")
+    if kitti_ids_file_name is not None:
+        kitti_ids_file_path = os.path.join(Path(kitti_data_dir).parent, kitti_ids_file_name)
+        with open(kitti_ids_file_path, "w") as kitti_ids_file:
+            for file_id in file_ids:
+                kitti_ids_file.write(f"{file_id}\n")
 
     # build KITTI annotations from PASCAL and copy or
     # move the image files into KITTI images directory

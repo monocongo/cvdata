@@ -75,7 +75,7 @@ The default split ratio is 70% training, 20% validation, and 10% testing but can
 be modified with the `--split` argument (these are colon-separated float 
 values and should sum to 1). For example: 
 ```bash
-$ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
+$ python split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --images_dir /data/rifle/kitti/image_2 \
 > --train_annotations_dir /data/rifle/split/kitti/trainval/label_2 \
 > --train_images_dir /data/rifle/split/kitti/trainval/image_2 \
@@ -84,6 +84,15 @@ $ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --test_annotations_dir /data/rifle/split/kitti/test/label_2 \
 > --test_images_dir /data/rifle/split/kitti/test/image_2 \
 > --format kitti --split 0.65:0.25:0.1 --move
+```
+In the case where only images are required to be split, we can omit the 
+annotations-related arguments from the command:
+```bash
+$ python split.py --images_dir /data/rifle/kitti/image_2 \
+> --train_images_dir /data/rifle/split/kitti/train/image_2 \
+> --val_images_dir /data/rifle/split/kitti/valid/image_2 \
+> --test_images_dir /data/rifle/split/kitti/test/image_2 \
+> --move
 ```
 
 ## Visualize annotations
