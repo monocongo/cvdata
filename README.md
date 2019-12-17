@@ -45,6 +45,13 @@ $ python convert.py --in_format pascal --out_format kitti \
     --kitti_ids_file handgun.txt
 ``` 
 
+## Image format conversion
+In order to convert all images in a directory from PNG to JPG we can use the script 
+`cvdata/convert.py`. For example:
+```bash
+$ python convert.py --in_format png --out_format jpg --images_dir /datasets/vehicle
+```
+
 ## Rename annotation labels
 In order to rename the image class labels of annotations use the script 
 `cvdata/rename.py`. This script currently supports annotations in KITTI (*.txt) 
