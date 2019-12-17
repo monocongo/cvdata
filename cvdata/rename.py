@@ -11,6 +11,19 @@ def rename_image_files(
         start: int,
         digits: int,
 ):
+    """
+    Renames all images in a directory to <prefix>_<enumeration>.<original_ext>,
+    with the enumeration portion starting at a designated number and with a
+    specified number of digits width.
+
+    :param images_dir: all image files within this directory will be renamed
+    :param prefix: the prefix used for the new file names
+    :param start: the number at which the enumeration portion of the new file
+        names should begin
+    :param digits: the number of digits (width) of the meration portion of the
+        new file names
+    """
+
     supported_extensions = ("gif", "jpg", "jpeg", "png",)
     current = start
     for file_name in os.listdir(images_dir):
