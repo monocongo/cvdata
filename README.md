@@ -1,6 +1,18 @@
 # cvdata
 Tools for creating and manipulating computer vision datasets
 
+## Installation
+This package can be installed into the active Python environment via `pip`, making 
+the `cvdata` module available for import within other Python code:
+```bash
+$ pip install cvdata
+```
+To utilize the package from command line as illustrated in the usage examples below 
+please clone/download from GitHub:
+```bash
+$ git clone git@github.com:monocongo/cvdata.git
+```
+
 ## OpenImages
 To download various image classes from [OpenImages](https://storage.googleapis.com/openimages/web/index.html) 
 use the script `cvdata/openimages.py`. This script currently only supports writing 
@@ -41,9 +53,7 @@ resulting file names), `--start` (the initial number in the enumeration part of
 the new file names), and `--digits` (width of the enumeration part of the new 
 file names) arguments. For example: 
 ```bash
-    # Usage: rename names of image files (images only)
-    # $ python rename.py --images_dir ~/datasets/handgun/images \
-    #     --prefix handgun --start 100 --digits 6
+$ python rename.py --images_dir ~/datasets/handgun/images --prefix handgun --start 100 --digits 6
 ```
 In a future release we'll support renaming of image and corresponding annotation 
 files. For example:
