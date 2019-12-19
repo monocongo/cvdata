@@ -51,7 +51,9 @@ def clean_darknet(
         for file_name in os.listdir(dir):
             # only filter out image and Darknet label files (this is
             # needed in case a subdirectory exists in the directory)
-            if file_name.endswith(".txt") or file_name.endswith(".jpg"):
+            # and skip the file named "labels.txt"
+            if file_name != "labels.txt" and \
+                    (file_name.endswith(".txt") or file_name.endswith(".jpg")):
                 if os.path.splitext(file_name)[0] not in file_ids:
                     unmatched_file = os.path.join(dir, file_name)
                     if problems_dir is not None:
@@ -68,12 +70,12 @@ def clean_darknet(
 
             parts = line.split()
             label = parts[0]
-            bbox_min_x = int(float(parts[1]))
-            bbox_min_y = int(float(parts[2]))
-            bbox_max_x = int(float(parts[3]))
-            bbox_max_y = int(float(parts[4]))
+            bbox_min_x = float(parts[1])
+            bbox_min_y = float(parts[2])
+            bbox_max_x = float(parts[3])
+            bbox_max_y = float(parts[4])
 
-            if label in rename_labels:
+            if (rename_labels is not None) and (label in rename_labels):
                 # update the label
                 label = rename_labels[label]
 
@@ -192,7 +194,7 @@ def clean_kitti(
             else:
                 score = " "
 
-            if label in rename_labels:
+            if (rename_labels is not None) and (label in rename_labels):
                 # update the label
                 label = rename_labels[label]
 
@@ -339,7 +341,7 @@ def clean_pascal(
                     # drop the bounding box since it is useless with no label
                     parent = obj.getparent()
                     parent.remove(obj)
-                elif name.text in rename_labels:
+                elif (rename_labels is not None) and (name.text in rename_labels):
                     # update the label
                     name.text = rename_labels[name.text]
 
@@ -458,7 +460,7 @@ if __name__ == "__main__":
         clean_darknet(
             args["annotations_dir"],
             args["images_dir"],
-            renames,
+            None,
             args["problems_dir"],
         )
 
