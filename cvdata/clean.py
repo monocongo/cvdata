@@ -27,7 +27,7 @@ _logger = logging.getLogger(__name__)
 def clean_darknet(
         labels_dir: str,
         images_dir: str,
-        rename_labels: Dict,
+        label_renames: Dict,
         problems_dir: str = None,
 ):
     """
@@ -47,15 +47,15 @@ def clean_darknet(
         os.makedirs(problems_dir, exist_ok=True)
 
     # remove files that aren't matches
-    for dir in [labels_dir, images_dir]:
-        for file_name in os.listdir(dir):
+    for directory in [labels_dir, images_dir]:
+        for file_name in os.listdir(directory):
             # only filter out image and Darknet label files (this is
             # needed in case a subdirectory exists in the directory)
             # and skip the file named "labels.txt"
             if file_name != "labels.txt" and \
                     (file_name.endswith(".txt") or file_name.endswith(".jpg")):
                 if os.path.splitext(file_name)[0] not in file_ids:
-                    unmatched_file = os.path.join(dir, file_name)
+                    unmatched_file = os.path.join(directory, file_name)
                     if problems_dir is not None:
                         shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
                     else:
@@ -75,9 +75,9 @@ def clean_darknet(
             bbox_max_x = float(parts[3])
             bbox_max_y = float(parts[4])
 
-            if (rename_labels is not None) and (label in rename_labels):
+            if (label_renames is not None) and (label in label_renames):
                 # update the label
-                label = rename_labels[label]
+                label = label_renames[label]
 
             # make sure we don't have wonky bounding box values
             # with mins > maxs, and if so we'll reverse them
@@ -115,10 +115,10 @@ def clean_darknet(
             # write the line back into the file in-place
             darknet_parts = [
                 label,
-                f'{bbox_min_x:.1f}',
-                f'{bbox_min_y:.1f}',
-                f'{bbox_max_x:.1f}',
-                f'{bbox_max_y:.1f}',
+                f'{bbox_min_x:.4f}',
+                f'{bbox_min_y:.4f}',
+                f'{bbox_max_x:.4f}',
+                f'{bbox_max_y:.4f}',
             ]
             print(" ".join(darknet_parts))
 
@@ -127,7 +127,7 @@ def clean_darknet(
 def clean_kitti(
         labels_dir: str,
         images_dir: str,
-        rename_labels: Dict,
+        label_renames: Dict,
         problems_dir: str = None,
 ):
     """
@@ -147,13 +147,13 @@ def clean_kitti(
         os.makedirs(problems_dir, exist_ok=True)
 
     # remove files that aren't matches
-    for dir in [labels_dir, images_dir]:
-        for file_name in os.listdir(dir):
+    for directory in [labels_dir, images_dir]:
+        for file_name in os.listdir(directory):
             # only filter out image and KITTI label files (this is
             # needed in case a subdirectory exists in the directory)
             if file_name.endswith(".txt") or file_name.endswith(".jpg"):
                 if os.path.splitext(file_name)[0] not in file_ids:
-                    unmatched_file = os.path.join(dir, file_name)
+                    unmatched_file = os.path.join(directory, file_name)
                     if problems_dir is not None:
                         shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
                     else:
@@ -194,9 +194,9 @@ def clean_kitti(
             else:
                 score = " "
 
-            if (rename_labels is not None) and (label in rename_labels):
+            if (label_renames is not None) and (label in label_renames):
                 # update the label
-                label = rename_labels[label]
+                label = label_renames[label]
 
             # make sure we don't have wonky bounding box values
             # with mins > maxs, and if so we'll reverse them
@@ -268,7 +268,7 @@ def clean_kitti(
 def clean_pascal(
         pascal_dir: str,
         images_dir: str,
-        rename_labels: Dict,
+        label_renames: Dict,
         problems_dir: str = None,
 ):
 
@@ -285,13 +285,13 @@ def clean_pascal(
         os.makedirs(problems_dir, exist_ok=True)
 
     # remove files that aren't matches
-    for dir in [pascal_dir, images_dir]:
-        for file_name in os.listdir(dir):
+    for directory in [pascal_dir, images_dir]:
+        for file_name in os.listdir(directory):
             # only filter out image and PASCAL files (this is needed
             # in case a subdirectory exists in the directory)
             if file_name.endswith(".xml") or file_name.endswith(".jpg"):
                 if os.path.splitext(file_name)[0] not in file_ids:
-                    unmatched_file = os.path.join(dir, file_name)
+                    unmatched_file = os.path.join(directory, file_name)
                     if problems_dir is not None:
                         shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
                     else:
@@ -341,9 +341,9 @@ def clean_pascal(
                     # drop the bounding box since it is useless with no label
                     parent = obj.getparent()
                     parent.remove(obj)
-                elif (rename_labels is not None) and (name.text in rename_labels):
+                elif (label_renames is not None) and (name.text in label_renames):
                     # update the label
-                    name.text = rename_labels[name.text]
+                    name.text = label_renames[name.text]
 
                 # for each bounding box make sure we have max
                 # values that are one less than the width/height
@@ -431,8 +431,8 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
+    renames = {}
     if args["rename_labels"]:
-        renames = {}
         for rename_labels in args["rename_labels"].split():
             from_label, to_label = rename_labels.split(":")
             renames[from_label] = to_label
@@ -460,7 +460,7 @@ if __name__ == "__main__":
         clean_darknet(
             args["annotations_dir"],
             args["images_dir"],
-            None,
+            renames,
             args["problems_dir"],
         )
 
