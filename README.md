@@ -95,12 +95,14 @@ $ python rename.py --labels_dir /data/cvdata/pascal --old handgun --new firearm 
 ## Sanitize dataset
 In order to clean a dataset's annotations we can utilize the script `cvdata/clean.py` 
 which will convert the images to JPG (if any are in PNG format), rename labels 
-(if specified) and update the PASCAL VOC annotation files so that all bounding 
-boxes are within reasonable range. For example:
+(if specified), and update the annotation files so that all bounding 
+boxes are within reasonable ranges. If specified then offending/problematic files 
+can be moved into a "problems" directory, otherwise they are removed. For example:
 ```bash
 $ python clean.py --format pascal \
->     --annotations_dir /data/datasets/delivery_truck/pascal \
+>    --annotations_dir /data/datasets/delivery_truck/pascal \
 >    --images_dir /data/datasets/delivery_truck/images \
+>    --problems_dir /data/datasets/delivery_truck/problem \
 >    --rename_labels deivery:delivery
 ```
 
