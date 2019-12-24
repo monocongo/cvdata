@@ -86,6 +86,20 @@ $ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --format kitti --split 0.65:0.25:0.1 --move
 ```
 
+## Remove duplicates
+The module/script `cvdata/duplicates.py` can be used to remove duplicate images 
+from a directory. This works on images that are similar, i.e. images don't need 
+to be exactly the same. Optionally the module can remove corresponding annotation 
+files, assuming that the annotation file names correspond to the image file names 
+(for example `abc.jpg` and `abc.xml`). Also we can move the duplicate files into 
+a separate directory rather than removing the files if a target directory is specified. 
+For example:
+```bash
+$ python duplicates.py --images_dir /data/trucks/ups/images \
+>      --annotations_dir /data/trucks/ups/pascal \
+>      --dups_dir /data/trucks/ups/dups
+```
+
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py`. This script currently supports annotations in COCO (*.json), 
