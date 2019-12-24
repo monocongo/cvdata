@@ -6,11 +6,19 @@ To download various image classes from [OpenImages](https://storage.googleapis.c
 use the script `cvdata/openimages.py`. This script currently only supports writing 
 annotations in PASCAL VOC format. For example:
 ```bash
-$ python cvdata/openimages.py --label Handgun Shotgun Rifle --exclusions /home/james/git/cvdata/exclusions/exclusions_weapons.txt --base_dir /data/cvdata/weapons --format pascal
+$ python cvdata/openimages.py --label Handgun Shotgun Rifle \
+>   --exclusions /home/james/git/cvdata/exclusions/exclusions_weapons.txt \
+>   --base_dir /data/cvdata/weapons --format pascal \
+>   --csv_dir /data/openimages
 ```
 The above will save each image class in a separate subdirectory under the base 
 directory, with images in a subdirectory named "images" and the PASCAL VOC format 
 annotations in a subdirectory named "pascal".
+
+PRO-TIP: If you'll use this command more than once then be sure to utilize the 
+`--csv_dir` option that specifies where to save the (rather large) CSV file containing 
+bounding box information etc., as this will save you from having to redownload this 
+large file in subsequent usages.
 
 ## Resize images
 In order to resize images and update the associated annotations use the script 
