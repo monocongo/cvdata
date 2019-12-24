@@ -31,7 +31,6 @@ setuptools.setup(
         "lxml",
         "numpy",
         "opencv-python",
-        # "opencv-contrib-python-nonfree",
         "pandas",
         "pillow",
         "requests",
