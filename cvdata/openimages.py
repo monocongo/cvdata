@@ -100,6 +100,7 @@ def build_dataset(
         annotation_format: str,
         exclusions_path: str,
         csv_dir: str = None,
+        limit: int = None,
 ) -> Dict:
     """
     Builds a dataset of images and annotations for a specified list of OpenImages
@@ -114,6 +115,7 @@ def build_dataset(
     :param csv_dir: directory where we should look for the class descriptions
         and annotations CSV files, and if not present download these files into
         the directory for future use
+    :param limit: the maximum number of images per label we should download
     :return: images directory and annotations directory
     """
 
@@ -148,6 +150,10 @@ def build_dataset(
     else:
         exclusion_ids = None
 
+    # keep counts of the number of images downloaded for each label
+    class_labels = list(label_codes.keys())
+    label_download_counts = {label: 0 for label in class_labels}
+
     # OpenImages is already split into sections so we'll need to loop over each
     for split_section in ("train", "validation", "test"):
 
@@ -155,25 +161,39 @@ def build_dataset(
         # containing bounding box info grouped by image IDs
         label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, csv_dir)
 
-        class_labels = list(label_codes.keys())
+        downloaded = 0
         for label_index, class_label in enumerate(class_labels):
 
             # get the bounding boxes grouped by image and the collection of image IDs
             bbox_groups = label_bbox_groups[class_label]
             image_ids = bbox_groups.groups.keys()
 
+            # limit the number of images we'll download, if specified
+            if limit is not None:
+                remaining = limit - label_download_counts[class_label]
+                if remaining <= 0:
+                    continue
+                elif remaining < len(image_ids):
+                    image_ids = image_ids[0:(remaining - 1)]
+
             # download the images
-            _logger.info(f"Downloading {split_section} images for class \'{class_label}\'")
+            _logger.info(
+                f"Downloading {len(image_ids)} {split_section} images "
+                f"for class \'{class_label}\'",
+            )
             download_images(
                 image_ids,
                 split_section,
                 image_class_directories[class_label]["images_dir"],
             )
 
+            # update the downloaded images count for this label
+            label_download_counts[class_label] += len(image_ids)
+
             # build the annotations
             _logger.info(
-                f"Creating {split_section} annotations ({annotation_format}) "
-                f"for class \'{class_label}\'"
+                f"Creating {len(image_ids)} {split_section} annotations "
+                f"({annotation_format}) for class \'{class_label}\'",
             )
             build_annotations(
                 annotation_format,
