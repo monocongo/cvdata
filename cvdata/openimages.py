@@ -4,6 +4,7 @@ import io
 import logging
 import os
 from typing import Dict, List, Set
+import urllib3
 import warnings
 
 import boto3
@@ -13,7 +14,7 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from cvdata.common import FORMAT_CHOICES as format_choices
+from cvdata.common import FORMAT_CHOICES
 from cvdata.utils import image_dimensions
 
 # OpenImages URL locations
@@ -161,7 +162,6 @@ def build_dataset(
         # containing bounding box info grouped by image IDs
         label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, csv_dir)
 
-        downloaded = 0
         for label_index, class_label in enumerate(class_labels):
 
             # get the bounding boxes grouped by image and the collection of image IDs
@@ -174,7 +174,7 @@ def build_dataset(
                 if remaining <= 0:
                     continue
                 elif remaining < len(image_ids):
-                    image_ids = image_ids[0:(remaining - 1)]
+                    image_ids = list(image_ids)[0:remaining]
 
             # download the images
             _logger.info(
@@ -529,7 +529,7 @@ def to_darknet(
                     _logger.warning(
                         "Creation of Darknet annotation for image "
                         f"{image_id} results in an invalid ("
-                        "negative) width fraction",
+                        "negative) width fraction -- skipping this box",
                     )
                     continue
 
@@ -546,7 +546,7 @@ def to_darknet(
                     _logger.warning(
                         "Creation of Darknet annotation for image "
                         f"{image_id} results in an invalid ("
-                        "too tall) height fraction",
+                        "too tall) height fraction -- skipping this box",
                     )
                     continue
                 else:
@@ -562,7 +562,7 @@ def to_darknet(
                     _logger.warning(
                         "Creation of Darknet annotation for image "
                         f"{image_id} results in an invalid ("
-                        "negative) height fraction",
+                        "negative) height fraction -- skipping this box",
                     )
                     continue
 
@@ -576,7 +576,7 @@ def to_darknet(
                 _logger.warning(
                     "Creation of Darknet annotation for image "
                     f"{image_id} results in an invalid ("
-                    "negative) width or height",
+                    "negative) width or height -- skipping this box",
                 )
                 continue
 
@@ -679,13 +679,19 @@ def download_image(arguments: Dict):
             written
     """
 
-    with open(arguments["dest_file_path"], "wb") as dest_file:
-        arguments["s3_client"].download_fileobj(
-            "open-images-dataset",
-            arguments["image_file_object_path"],
-            dest_file,
-        )
+    try:
+        with open(arguments["dest_file_path"], "wb") as dest_file:
+            arguments["s3_client"].download_fileobj(
+                "open-images-dataset",
+                arguments["image_file_object_path"],
+                dest_file,
+            )
 
+    except urllib3.exceptions.ProtocolError as error:
+        _logger.warning(
+            f"Unable to download image {arguments['image_file_object_path']} -- skipping",
+            error,
+        )
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -707,7 +713,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=format_choices,
+        choices=FORMAT_CHOICES,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     args_parser.add_argument(
