@@ -732,6 +732,12 @@ if __name__ == "__main__":
              "metadata (annotations, descriptions, etc.) should be read and/or "
              "downloaded into for later use",
     )
+    args_parser.add_argument(
+        "--limit",
+        type=int,
+        required=False,
+        help="maximum number of images to download per image class/label",
+    )
     args = vars(args_parser.parse_args())
 
     build_dataset(
@@ -740,4 +746,5 @@ if __name__ == "__main__":
         args["format"],
         args["exclusions"],
         args["csv_dir"],
+        args["limit"],
     )
