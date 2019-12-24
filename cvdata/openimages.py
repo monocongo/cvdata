@@ -172,7 +172,7 @@ def build_dataset(
             if limit is not None:
                 remaining = limit - label_download_counts[class_label]
                 if remaining <= 0:
-                    continue
+                    break
                 elif remaining < len(image_ids):
                     image_ids = list(image_ids)[0:remaining]
 
@@ -598,7 +598,7 @@ def to_pascal(
         image_id: str,
         images_dir: str,
         pascal_dir: str,
-) -> str:
+) -> int:
     """
     Writes a PASCAL VOC (XML) annotation file containing the bounding boxes for
     an image.
@@ -609,12 +609,21 @@ def to_pascal(
         minus ".jpg" or ".png")
     :param images_dir: directory where the image file is located
     :param pascal_dir: directory where the PASCAL file should be written
-    :return: path to the PASCAL VOC file
+    :return: 0 for success, 1 for failure
     """
 
     # get the image dimensions
-    image_path = os.path.join(images_dir, image_id + ".jpg")
-    img_width, img_height, img_depth = image_dimensions(image_path)
+    image_file_name = image_id + ".jpg"
+    image_path = os.path.join(images_dir, image_file_name)
+    try:
+        img_width, img_height, img_depth = image_dimensions(image_path)
+    except OSError as error:
+        _logger.warning(
+            "Unable to create PASCAL annotation for image "
+            f"{image_file_name} -- skipping",
+            error
+        )
+        return 1
 
     normalized_image_path = os.path.normpath(image_path)
     folder_name, image_file_name = normalized_image_path.split(os.path.sep)[-2:]
@@ -663,7 +672,7 @@ def to_pascal(
     with open(pascal_file_path, 'w') as pascal_file:
         pascal_file.write(etree.tostring(annotation, pretty_print=True, encoding='utf-8').decode("utf-8"))
 
-    return pascal_file_path
+    return 0
 
 
 # ------------------------------------------------------------------------------
