@@ -64,17 +64,18 @@ def remove_duplicates(
         else:
             shutil.move(image_path, os.path.join(duplicates_dir, image_file_name))
 
-        if annotations_dir is not None:
-
-            for annotation_file_name in os.listdir(annotations_dir):
-                if os.path.splitext(annotation_file_name)[0] in duplicate_ids:
-                    annotation_path = os.path.join(annotations_dir, annotation_file_name)
-                    if duplicates_dir is None:
-                        os.remove(annotation_path)
-                    else:
-                        shutil.move(annotation_path, os.path.join(duplicates_dir, annotation_file_name))
-            # TODO
-            pass
+    # move/remove corresponding annotations, if specified
+    if annotations_dir is not None:
+        for annotation_file_name in os.listdir(annotations_dir):
+            if os.path.splitext(annotation_file_name)[0] in duplicate_ids:
+                annotation_path = os.path.join(annotations_dir, annotation_file_name)
+                if duplicates_dir is None:
+                    os.remove(annotation_path)
+                else:
+                    shutil.move(
+                        annotation_path,
+                        os.path.join(duplicates_dir, annotation_file_name),
+                    )
 
     return duplicate_files
 
@@ -84,9 +85,9 @@ if __name__ == "__main__":
 
     # Usage:
     #
-    # $ python duplicates.py --images_dir /home/james/data/trucks/ups/images \
-    # >      --annotations_dir /home/james/data/trucks/ups/pascal \
-    # >      --dups_dir /home/james/data/trucks/ups/dups
+    # $ python duplicates.py --images_dir /data/trucks/ups/images \
+    # >      --annotations_dir /data/trucks/ups/pascal \
+    # >      --dups_dir /data/trucks/ups/dups
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -113,5 +114,5 @@ if __name__ == "__main__":
     remove_duplicates(
         args["images_dir"],
         annotations_dir=args["annotations_dir"],
-        dups_dir=args["dups_idr"],
+        duplicates_dir=args["dups_dir"],
     )
