@@ -1,6 +1,18 @@
 # cvdata
 Tools for creating and manipulating computer vision datasets
 
+## Installation
+This package can be installed into the active Python environment via `pip`, making 
+the `cvdata` module available for import within other Python code:
+```bash
+$ pip install cvdata
+```
+To utilize the package from command line as illustrated in the usage examples below 
+please clone/download from GitHub:
+```bash
+$ git clone git@github.com:monocongo/cvdata.git
+```
+
 ## OpenImages
 To download various image classes from [OpenImages](https://storage.googleapis.com/openimages/web/index.html) 
 use the script `cvdata/openimages.py`. This script currently only supports writing 
@@ -41,6 +53,25 @@ $ python resize.py --input_images /ssd_training/kitti/image_2 \
     --width 1024 --height 768
 ```
 
+## Rename files
+In order to perform bulk renaming of image files we provide the script 
+`cvdata/rename.py`. This allows us to specify a directory containing image files, 
+all of which will be renamed according to the `--prefix` (the prefix used for the 
+resulting file names), `--start` (the initial number in the enumeration part of 
+the new file names), and `--digits` (width of the enumeration part of the new 
+file names) arguments. For example: 
+```bash
+$ python rename.py --images_dir ~/datasets/handgun/images --prefix handgun --start 100 --digits 6
+```
+In a future release we'll support renaming of image and corresponding annotation 
+files. For example:
+```bash
+$ python rename.py --annotations_dir ~/datasets/handgun/kitti \
+>  --images_dir ~/datasets/handgun/images \
+> --prefix handgun --start 100 --digits 6 \
+> --format kitti --kitti_ids_file file_ids.txt
+```
+
 ## Convert annotation formats
 In order to convert from one annotation format to another use the script 
 `cvdata/convert.py`. This script currently supports converting annotations from 
@@ -52,6 +83,13 @@ $ python convert.py --in_format pascal --out_format kitti \
     --out_dir /data/handgun/kitti \
     --kitti_ids_file handgun.txt
 ``` 
+
+## Image format conversion
+In order to convert all images in a directory from PNG to JPG we can use the script 
+`cvdata/convert.py`. For example:
+```bash
+$ python convert.py --in_format png --out_format jpg --images_dir /datasets/vehicle
+```
 
 ## Rename annotation labels
 In order to rename the image class labels of annotations use the script 
@@ -65,12 +103,14 @@ $ python rename.py --labels_dir /data/cvdata/pascal --old handgun --new firearm 
 ## Sanitize dataset
 In order to clean a dataset's annotations we can utilize the script `cvdata/clean.py` 
 which will convert the images to JPG (if any are in PNG format), rename labels 
-(if specified) and update the PASCAL VOC annotation files so that all bounding 
-boxes are within reasonable range. For example:
+(if specified), and update the annotation files so that all bounding 
+boxes are within reasonable ranges. If specified then offending/problematic files 
+can be moved into a "problems" directory, otherwise they are removed. For example:
 ```bash
 $ python clean.py --format pascal \
->     --annotations_dir /data/datasets/delivery_truck/pascal \
+>    --annotations_dir /data/datasets/delivery_truck/pascal \
 >    --images_dir /data/datasets/delivery_truck/images \
+>    --problems_dir /data/datasets/delivery_truck/problem \
 >    --rename_labels deivery:delivery
 ```
 
@@ -83,7 +123,7 @@ The default split ratio is 70% training, 20% validation, and 10% testing but can
 be modified with the `--split` argument (these are colon-separated float 
 values and should sum to 1). For example: 
 ```bash
-$ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
+$ python split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --images_dir /data/rifle/kitti/image_2 \
 > --train_annotations_dir /data/rifle/split/kitti/trainval/label_2 \
 > --train_images_dir /data/rifle/split/kitti/trainval/image_2 \
@@ -92,6 +132,15 @@ $ python cvdata.split.py --annotations_dir /data/rifle/kitti/label_2 \
 > --test_annotations_dir /data/rifle/split/kitti/test/label_2 \
 > --test_images_dir /data/rifle/split/kitti/test/image_2 \
 > --format kitti --split 0.65:0.25:0.1 --move
+```
+In the case where only images are required to be split, we can omit the 
+annotations-related arguments from the command:
+```bash
+$ python split.py --images_dir /data/rifle/kitti/image_2 \
+> --train_images_dir /data/rifle/split/kitti/train/image_2 \
+> --val_images_dir /data/rifle/split/kitti/valid/image_2 \
+> --test_images_dir /data/rifle/split/kitti/test/image_2 \
+> --move
 ```
 
 ## Remove duplicates
