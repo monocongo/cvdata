@@ -10,7 +10,6 @@ from xml.etree import ElementTree
 import cv2
 from tqdm import tqdm
 
-from cvdata.split import split_train_valid_test_images
 from cvdata.utils import matching_ids
 
 
@@ -75,7 +74,7 @@ def pascal_to_kitti(
         pascal_dir: str,
         images_dir: str,
         kitti_data_dir: str,
-        kitti_ids_file_name: str,
+        kitti_ids_file_name: str = None,
         move_image_files: bool = False,
 ) -> int:
     """
@@ -114,11 +113,12 @@ def pascal_to_kitti(
     # get list of file IDs of the PASCAL VOC annotations and corresponding images
     file_ids = matching_ids(pascal_dir, images_dir, pascal_ext, img_ext)
 
-    # write the KITTI file IDs file in the KITTI data directory's parent directory
-    kitti_ids_file_path = os.path.join(Path(kitti_data_dir).parent, kitti_ids_file_name)
-    with open(kitti_ids_file_path, "w") as kitti_ids_file:
-        for file_id in file_ids:
-            kitti_ids_file.write(f"{file_id}\n")
+    # write the KITTI IDs file in the KITTI directory's parent directory
+    if kitti_ids_file_name is not None:
+        kitti_ids_file_path = os.path.join(Path(kitti_data_dir).parent, kitti_ids_file_name)
+        with open(kitti_ids_file_path, "w") as kitti_ids_file:
+            for file_id in file_ids:
+                kitti_ids_file.write(f"{file_id}\n")
 
     # build KITTI annotations from PASCAL and copy or
     # move the image files into KITTI images directory
@@ -229,7 +229,7 @@ def pascal_to_openimages(
         pascal_dir: str,
         images_dir: str,
         openimages_dir: str,
-        split: str = None,
+        move_image_files: bool = False,
 ):
 
     def csv_from_pascal(
@@ -269,70 +269,26 @@ def pascal_to_openimages(
             if os.path.splitext(name)[0] not in valid_file_ids:
                 os.remove(os.path.join(directory, name))
 
-    copy_image_files = True
-
-    if split is not None:
-
-        # create the destination directories for the image split subsets
-        openimages_train_dir = os.path.join(openimages_dir, "train")
-        openimages_valid_dir = os.path.join(openimages_dir, "validation")
-        openimages_test_dir = os.path.join(openimages_dir, "test")
-        os.makedirs(openimages_train_dir, exist_ok=True)
-        os.makedirs(openimages_valid_dir, exist_ok=True)
-        os.makedirs(openimages_test_dir, exist_ok=True)
-
-        # split the images into the OpenImages split subdirectories
-        train_percentage, valid_percentage, _ = map(float, split.split(":"))
-        split_arguments = {
-            "images_dir": images_dir,
-            "train_images_dir": openimages_train_dir,
-            "val_images_dir": openimages_valid_dir,
-            "test_images_dir": openimages_test_dir,
-            "train_percentage": train_percentage,
-            "valid_percentage": valid_percentage,
-            "copy_feature": copy_image_files,
-        }
-        split_train_valid_test_images(split_arguments)
-
-        # translate PASCAL annotations to corresponding lines in the OpenImages CSVs
-        for section in ["train", "validation", "test"]:
-
-            csv_file_path = \
-                os.path.join(openimages_dir, "sub-" + section + "-annotations-bbox.csv")
-            if section == "train":
-                split_images_dir = openimages_train_dir
-            elif section == "valid":
-                split_images_dir = openimages_valid_dir
-            else:
-                split_images_dir = openimages_test_dir
-            file_ids = csv_from_pascal(csv_file_path, split_images_dir, pascal_dir)
-
-            # go through the files in the images directory and remove any that
-            # aren't included in the list of file IDs included in the CSV
-            remove_invalid_files(file_ids, split_images_dir)
-
+    # copy or move the image files into the OpenImages directory
+    if move_image_files:
+        relocate = shutil.move
     else:
+        relocate = shutil.copy2
+    dest_images_dir = os.path.join(openimages_dir, "images")
+    os.makedirs(images_dir, exist_ok=True)
+    for file_name in os.listdir(images_dir):
+        if file_name.endswith(".jpg"):
+            image_file_path = os.path.join(images_dir, file_name)
+            relocate(image_file_path, dest_images_dir)
 
-        # copy or move the image files into the OpenImages directory
-        if copy_image_files:
-            relocate = shutil.copy2
-        else:
-            relocate = shutil.move
-        dest_images_dir = os.path.join(openimages_dir, "images")
-        os.makedirs(images_dir, exist_ok=True)
-        for file_name in os.listdir(images_dir):
-            if file_name.endswith(".jpg"):
-                image_file_path = os.path.join(images_dir, file_name)
-                relocate(image_file_path, dest_images_dir)
+    # write the annotations into the OpenImages CSV
+    csv_file_path = \
+        os.path.join(openimages_dir, "annotations-bbox.csv")
+    file_ids = csv_from_pascal(csv_file_path, dest_images_dir, pascal_dir)
 
-        # write the annotations into the OpenImages CSV
-        csv_file_path = \
-            os.path.join(openimages_dir, "annotations-bbox.csv")
-        file_ids = csv_from_pascal(csv_file_path, dest_images_dir, pascal_dir)
-
-        # go through the files in the images directory and remove any that
-        # aren't included in the list of file IDs included in the CSV
-        remove_invalid_files(file_ids, dest_images_dir)
+    # go through the files in the images directory and remove any that
+    # aren't included in the list of file IDs included in the CSV
+    remove_invalid_files(file_ids, dest_images_dir)
 
 
 # ------------------------------------------------------------------------------
@@ -341,8 +297,19 @@ def openimages_to_kitti(
         images_dir: str,
         out_dir: str,
         kitti_ids_file: str,
-        split: str = None,
+        move_images: bool = False,
 ):
+    """
+    TODO
+
+    :param annotations_csv:
+    :param images_dir:
+    :param out_dir:
+    :param kitti_ids_file:
+    :param move_images:
+    :return:
+    """
+
     # TODO
     pass
 
@@ -352,8 +319,16 @@ def openimages_to_pascal(
         annotations_csv: str,
         images_dir: str,
         out_dir: str,
-        split: str = None,
 ):
+    """
+    TODO
+
+    :param annotations_csv:
+    :param images_dir:
+    :param out_dir:
+    :return:
+    """
+
     # TODO
     pass
 
@@ -405,11 +380,10 @@ if __name__ == "__main__":
              "parent directory of the output directory for KITTI data",
     )
     args_parser.add_argument(
-        "--split",
-        required=False,
-        type=str,
-        help="split percentages, in format \"train:valid:test\" where train, "
-             "valid and test are floats (decimals) and must sum to 1.0",
+        "--move_kitti_images",
+        default=False,
+        action='store_true',
+        help="move image files into the KITTI images directory, rather than copying",
     )
     args_parser.add_argument(
         "--in_format",
@@ -434,14 +408,14 @@ if __name__ == "__main__":
                 args["images_dir"],
                 args["out_dir"],
                 args["kitti_ids_file"],
-                args["split"],
+                args["move_kitti_images"],
             )
         elif args["out_format"] == "openimages":
             pascal_to_openimages(
                 args["annotations_dir"],
                 args["images_dir"],
                 args["out_dir"],
-                args["split"],
+                args["move_kitti_images"],
             )
         else:
             raise ValueError(
@@ -455,14 +429,13 @@ if __name__ == "__main__":
                 args["images_dir"],
                 args["out_dir"],
                 args["kitti_ids_file"],
-                args["split"],
+                args["move_kitti_images"],
             )
         elif args["out_format"] == "pascal":
             openimages_to_pascal(
                 args["annotations_dir"],
                 args["images_dir"],
                 args["out_dir"],
-                args["split"],
             )
         else:
             raise ValueError(
