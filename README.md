@@ -100,6 +100,21 @@ annotation files of the specified format in the specified directory. For example
 $ python rename.py --labels_dir /data/cvdata/pascal --old handgun --new firearm --format pascal
 ```
 
+## Exclusion of unwanted images
+Unwanted images and their corresponding annotations can be excluded (removed) from 
+a dataset using the script `cvdata/exclude.py`. For example: 
+```bash
+$ python exclude.py --format pascal \
+>  --exclusions /data/handgun/exclusions.txt
+>  --images /data/handgun/images \
+>  --annotations /data/handgun/pascal \
+```
+The script can also be used to filter out only corresponding image files by omitting 
+the `--annotations` argument and corresponding `--format` argument. For example: 
+```bash
+$ python exclude.py --exclusions /data/handgun/exclusions.txt --images /data/handgun/images
+```
+
 ## Sanitize dataset
 In order to clean a dataset's annotations we can utilize the script `cvdata/clean.py` 
 which will convert the images to JPG (if any are in PNG format), rename labels 
