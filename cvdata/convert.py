@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 import cv2
 from tqdm import tqdm
 
+from cvdata.common import FORMAT_CHOICES
 from cvdata.utils import matching_ids
 
 
@@ -351,7 +352,6 @@ if __name__ == "__main__":
     """
 
     # parse the command line arguments
-    format_choices = ["coco", "darknet", "kitti", "openimages", "pascal"]
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
         "--annotations_dir",
@@ -389,14 +389,14 @@ if __name__ == "__main__":
         "--in_format",
         required=True,
         type=str,
-        choices=format_choices,
+        choices=FORMAT_CHOICES.append("jpg"),
         help="format of input annotations",
     )
     args_parser.add_argument(
         "--out_format",
         required=True,
         type=str,
-        choices=format_choices,
+        choices=FORMAT_CHOICES.append("png"),
         help="format of output annotations",
     )
     args = vars(args_parser.parse_args())
