@@ -4,6 +4,7 @@ import io
 import logging
 import os
 from typing import Dict, List, Set
+import urllib3
 import warnings
 
 import boto3
@@ -13,7 +14,7 @@ import pandas as pd
 import requests
 from tqdm import tqdm
 
-from cvdata.common import FORMAT_CHOICES as format_choices
+from cvdata.common import FORMAT_CHOICES
 from cvdata.utils import image_dimensions
 
 # OpenImages URL locations
@@ -100,6 +101,7 @@ def build_dataset(
         annotation_format: str,
         exclusions_path: str,
         csv_dir: str = None,
+        limit: int = None,
 ) -> Dict:
     """
     Builds a dataset of images and annotations for a specified list of OpenImages
@@ -114,6 +116,7 @@ def build_dataset(
     :param csv_dir: directory where we should look for the class descriptions
         and annotations CSV files, and if not present download these files into
         the directory for future use
+    :param limit: the maximum number of images per label we should download
     :return: images directory and annotations directory
     """
 
@@ -148,6 +151,10 @@ def build_dataset(
     else:
         exclusion_ids = None
 
+    # keep counts of the number of images downloaded for each label
+    class_labels = list(label_codes.keys())
+    label_download_counts = {label: 0 for label in class_labels}
+
     # OpenImages is already split into sections so we'll need to loop over each
     for split_section in ("train", "validation", "test"):
 
@@ -155,25 +162,38 @@ def build_dataset(
         # containing bounding box info grouped by image IDs
         label_bbox_groups = bounding_boxes(split_section, label_codes, exclusion_ids, csv_dir)
 
-        class_labels = list(label_codes.keys())
         for label_index, class_label in enumerate(class_labels):
 
             # get the bounding boxes grouped by image and the collection of image IDs
             bbox_groups = label_bbox_groups[class_label]
             image_ids = bbox_groups.groups.keys()
 
+            # limit the number of images we'll download, if specified
+            if limit is not None:
+                remaining = limit - label_download_counts[class_label]
+                if remaining <= 0:
+                    break
+                elif remaining < len(image_ids):
+                    image_ids = list(image_ids)[0:remaining]
+
             # download the images
-            _logger.info(f"Downloading {split_section} images for class \'{class_label}\'")
+            _logger.info(
+                f"Downloading {len(image_ids)} {split_section} images "
+                f"for class \'{class_label}\'",
+            )
             download_images(
                 image_ids,
                 split_section,
                 image_class_directories[class_label]["images_dir"],
             )
 
+            # update the downloaded images count for this label
+            label_download_counts[class_label] += len(image_ids)
+
             # build the annotations
             _logger.info(
-                f"Creating {split_section} annotations ({annotation_format}) "
-                f"for class \'{class_label}\'"
+                f"Creating {len(image_ids)} {split_section} annotations "
+                f"({annotation_format}) for class \'{class_label}\'",
             )
             build_annotations(
                 annotation_format,
@@ -509,7 +529,7 @@ def to_darknet(
                     _logger.warning(
                         "Creation of Darknet annotation for image "
                         f"{image_id} results in an invalid ("
-                        "negative) width fraction",
+                        "negative) width fraction -- skipping this box",
                     )
                     continue
 
@@ -526,7 +546,7 @@ def to_darknet(
                     _logger.warning(
                         "Creation of Darknet annotation for image "
                         f"{image_id} results in an invalid ("
-                        "too tall) height fraction",
+                        "too tall) height fraction -- skipping this box",
                     )
                     continue
                 else:
@@ -542,7 +562,7 @@ def to_darknet(
                     _logger.warning(
                         "Creation of Darknet annotation for image "
                         f"{image_id} results in an invalid ("
-                        "negative) height fraction",
+                        "negative) height fraction -- skipping this box",
                     )
                     continue
 
@@ -556,7 +576,7 @@ def to_darknet(
                 _logger.warning(
                     "Creation of Darknet annotation for image "
                     f"{image_id} results in an invalid ("
-                    "negative) width or height",
+                    "negative) width or height -- skipping this box",
                 )
                 continue
 
@@ -578,7 +598,7 @@ def to_pascal(
         image_id: str,
         images_dir: str,
         pascal_dir: str,
-) -> str:
+) -> int:
     """
     Writes a PASCAL VOC (XML) annotation file containing the bounding boxes for
     an image.
@@ -589,12 +609,21 @@ def to_pascal(
         minus ".jpg" or ".png")
     :param images_dir: directory where the image file is located
     :param pascal_dir: directory where the PASCAL file should be written
-    :return: path to the PASCAL VOC file
+    :return: 0 for success, 1 for failure
     """
 
     # get the image dimensions
-    image_path = os.path.join(images_dir, image_id + ".jpg")
-    img_width, img_height, img_depth = image_dimensions(image_path)
+    image_file_name = image_id + ".jpg"
+    image_path = os.path.join(images_dir, image_file_name)
+    try:
+        img_width, img_height, img_depth = image_dimensions(image_path)
+    except OSError as error:
+        _logger.warning(
+            "Unable to create PASCAL annotation for image "
+            f"{image_file_name} -- skipping",
+            error
+        )
+        return 1
 
     normalized_image_path = os.path.normpath(image_path)
     folder_name, image_file_name = normalized_image_path.split(os.path.sep)[-2:]
@@ -643,7 +672,7 @@ def to_pascal(
     with open(pascal_file_path, 'w') as pascal_file:
         pascal_file.write(etree.tostring(annotation, pretty_print=True, encoding='utf-8').decode("utf-8"))
 
-    return pascal_file_path
+    return 0
 
 
 # ------------------------------------------------------------------------------
@@ -659,13 +688,19 @@ def download_image(arguments: Dict):
             written
     """
 
-    with open(arguments["dest_file_path"], "wb") as dest_file:
-        arguments["s3_client"].download_fileobj(
-            "open-images-dataset",
-            arguments["image_file_object_path"],
-            dest_file,
-        )
+    try:
+        with open(arguments["dest_file_path"], "wb") as dest_file:
+            arguments["s3_client"].download_fileobj(
+                "open-images-dataset",
+                arguments["image_file_object_path"],
+                dest_file,
+            )
 
+    except urllib3.exceptions.ProtocolError as error:
+        _logger.warning(
+            f"Unable to download image {arguments['image_file_object_path']} -- skipping",
+            error,
+        )
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -687,7 +722,7 @@ if __name__ == "__main__":
         type=str,
         required=False,
         default="pascal",
-        choices=format_choices,
+        choices=FORMAT_CHOICES,
         help="output format: KITTI, PASCAL, Darknet, TFRecord, or COCO",
     )
     args_parser.add_argument(
@@ -712,6 +747,12 @@ if __name__ == "__main__":
              "metadata (annotations, descriptions, etc.) should be read and/or "
              "downloaded into for later use",
     )
+    args_parser.add_argument(
+        "--limit",
+        type=int,
+        required=False,
+        help="maximum number of images to download per image class/label",
+    )
     args = vars(args_parser.parse_args())
 
     build_dataset(
@@ -720,4 +761,5 @@ if __name__ == "__main__":
         args["format"],
         args["exclusions"],
         args["csv_dir"],
+        args["limit"],
     )
