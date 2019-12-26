@@ -46,7 +46,7 @@ $ python resize.py --input_images /ssd_training/kitti/image_2 \
 ```
 
 We can also resize all images in a directory by using the same command as above 
-but without an annotation directory, extension, or format specified:
+but without an annotation directory or format specified:
 ```bash
 $ python resize.py --input_images /ssd_training/kitti/image_2 \
     --output_images /ssd_training/kitti/image_2 \
@@ -75,7 +75,7 @@ $ python rename.py --annotations_dir ~/datasets/handgun/kitti \
 ## Convert annotation formats
 In order to convert from one annotation format to another use the script 
 `cvdata/convert.py`. This script currently supports converting annotations from 
-PASCAL to KITTI formats. For example: 
+PASCAL to KITTI and from PASCAL to OpenImages. For example: 
 ```bash
 $ python convert.py --in_format pascal --out_format kitti \
     --annotations_dir /data/handgun/pascal \
@@ -100,12 +100,27 @@ annotation files of the specified format in the specified directory. For example
 $ python rename.py --labels_dir /data/cvdata/pascal --old handgun --new firearm --format pascal
 ```
 
+## Exclusion of unwanted images/annotations
+Unwanted images and (optionally) their corresponding annotations can be excluded 
+(removed) from a dataset using the script `cvdata/exclude.py`. For example: 
+```bash
+$ python exclude.py --format pascal \
+>  --exclusions /data/handgun/exclusions.txt
+>  --images /data/handgun/images \
+>  --annotations /data/handgun/pascal \
+```
+The script can also be used to filter out only corresponding image files by omitting 
+the `--annotations` argument and corresponding `--format` argument. For example: 
+```bash
+$ python exclude.py --exclusions /data/handgun/exclusions.txt --images /data/handgun/images
+```
+
 ## Sanitize dataset
 In order to clean a dataset's annotations we can utilize the script `cvdata/clean.py` 
 which will convert the images to JPG (if any are in PNG format), rename labels 
 (if specified), and update the annotation files so that all bounding 
 boxes are within reasonable ranges. If specified then offending/problematic files 
-can be moved into a "problems" directory, otherwise they are removed. For example:
+can be moved into a "problems" directory, otherwise they will be removed. For example:
 ```bash
 $ python clean.py --format pascal \
 >    --annotations_dir /data/datasets/delivery_truck/pascal \
