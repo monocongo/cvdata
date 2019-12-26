@@ -46,7 +46,7 @@ $ python resize.py --input_images /ssd_training/kitti/image_2 \
 ```
 
 We can also resize all images in a directory by using the same command as above 
-but without an annotation directory, extension, or format specified:
+but without an annotation directory or format specified:
 ```bash
 $ python resize.py --input_images /ssd_training/kitti/image_2 \
     --output_images /ssd_training/kitti/image_2 \
@@ -75,7 +75,7 @@ $ python rename.py --annotations_dir ~/datasets/handgun/kitti \
 ## Convert annotation formats
 In order to convert from one annotation format to another use the script 
 `cvdata/convert.py`. This script currently supports converting annotations from 
-PASCAL to KITTI formats. For example: 
+PASCAL to KITTI and from PASCAL to OpenImages. For example: 
 ```bash
 $ python convert.py --in_format pascal --out_format kitti \
     --annotations_dir /data/handgun/pascal \
