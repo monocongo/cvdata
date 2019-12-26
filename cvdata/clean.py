@@ -134,7 +134,7 @@ def clean_kitti(
         labels_dir: str,
         images_dir: str,
         label_replacements: Dict = None,
-        remove_labels: List[str] = None,
+        label_removals: List[str] = None,
         problems_dir: str = None,
 ):
     """
@@ -143,7 +143,7 @@ def clean_kitti(
     :param labels_dir:
     :param images_dir:
     :param label_replacements:
-    :param remove_labels:
+    :param label_removals:
     :param problems_dir:
     :return:
     """
@@ -190,7 +190,7 @@ def clean_kitti(
             label = parts[0]
 
             # skip rewriting this line if it's a label we want removed
-            if (remove_labels is not None) and (label in remove_labels):
+            if (label_removals is not None) and (label in label_removals):
                 continue
 
             truncated = parts[1]
@@ -287,7 +287,8 @@ def clean_kitti(
 def clean_pascal(
         pascal_dir: str,
         images_dir: str,
-        label_replacements: Dict,
+        label_replacements: Dict = None,
+        label_removals: List[str] = None,
         problems_dir: str = None,
 ):
     """
@@ -365,10 +366,12 @@ def clean_pascal(
 
                 # replace all bounding box labels if specified in the replacement dictionary
                 name = obj.find("name")
-                if name is None:
-                    # drop the bounding box since it is useless with no label
+                if (name is None) or ((label_removals is not None) and (name.text in label_removals)):
+                    # drop the bounding box
                     parent = obj.getparent()
                     parent.remove(obj)
+                    # move on, nothing more to do for this box
+                    continue
                 elif (label_replacements is not None) and (name.text in label_replacements):
                     # update the label
                     name.text = label_replacements[name.text]
