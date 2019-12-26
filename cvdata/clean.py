@@ -28,6 +28,7 @@ def clean_darknet(
         labels_dir: str,
         images_dir: str,
         label_replacements: Dict,
+        label_removals: List[str] = None,
         problems_dir: str = None,
 ):
     """
@@ -36,6 +37,7 @@ def clean_darknet(
     :param labels_dir:
     :param images_dir:
     :param label_replacements:
+    :param label_removals:
     :param problems_dir:
     :return:
     """
@@ -74,8 +76,15 @@ def clean_darknet(
         src_annotation_file_path = os.path.join(labels_dir, file_id + ".txt")
         for line in fileinput.input(src_annotation_file_path, inplace=True):
 
+            # get the bounding box label
             parts = line.split()
             label = parts[0]
+
+            # skip rewriting this line if it's a label we want removed
+            if (label_removals is not None) and (label in label_removals):
+                continue
+
+            # get the bounding box coordinates
             bbox_min_x = float(parts[1])
             bbox_min_y = float(parts[2])
             bbox_max_x = float(parts[3])
@@ -297,6 +306,7 @@ def clean_pascal(
     :param pascal_dir:
     :param images_dir:
     :param label_replacements:
+    :param label_removals:
     :param problems_dir:
     :return:
     """
@@ -493,6 +503,7 @@ if __name__ == "__main__":
             args["annotations_dir"],
             args["images_dir"],
             replacements,
+            args["remove_labels"],
             args["problems_dir"],
         )
 
@@ -502,6 +513,7 @@ if __name__ == "__main__":
             args["annotations_dir"],
             args["images_dir"],
             replacements,
+            args["remove_labels"],
             args["problems_dir"],
         )
 
