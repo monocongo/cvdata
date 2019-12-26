@@ -3,7 +3,7 @@ import fileinput
 import logging
 import os
 import shutil
-from typing import Dict
+from typing import Dict, List
 
 from lxml import etree
 from PIL import Image
@@ -32,6 +32,12 @@ def clean_darknet(
 ):
     """
     TODO
+
+    :param labels_dir:
+    :param images_dir:
+    :param label_renames:
+    :param problems_dir:
+    :return:
     """
 
     # convert all PNG images to JPG, and remove the original PNG file
@@ -127,11 +133,19 @@ def clean_darknet(
 def clean_kitti(
         labels_dir: str,
         images_dir: str,
-        label_renames: Dict,
+        label_renames: Dict = None,
+        remove_labels: List[str] = None,
         problems_dir: str = None,
 ):
     """
     TODO
+
+    :param labels_dir:
+    :param images_dir:
+    :param label_renames:
+    :param remove_labels:
+    :param problems_dir:
+    :return:
     """
 
     # convert all PNG images to JPG, and remove the original PNG file
@@ -271,6 +285,15 @@ def clean_pascal(
         label_renames: Dict,
         problems_dir: str = None,
 ):
+    """
+    TODO
+
+    :param pascal_dir:
+    :param images_dir:
+    :param label_renames:
+    :param problems_dir:
+    :return:
+    """
 
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(pascal_dir, images_dir, ".xml", ".png"):
@@ -427,7 +450,15 @@ if __name__ == "__main__":
         "--rename_labels",
         required=False,
         type=str,
+        nargs="*",
         help="labels to be renamed, in format new:old (space separated)",
+    )
+    args_parser.add_argument(
+        "--remove_labels",
+        required=False,
+        type=str,
+        nargs="*",
+        help="labels of bounding boxes to be removed",
     )
     args = vars(args_parser.parse_args())
 
@@ -443,6 +474,7 @@ if __name__ == "__main__":
             args["annotations_dir"],
             args["images_dir"],
             renames,
+            args["remove_labels"],
             args["problems_dir"],
         )
 
