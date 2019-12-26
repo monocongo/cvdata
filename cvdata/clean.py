@@ -188,6 +188,11 @@ def clean_kitti(
 
             parts = line.split()
             label = parts[0]
+
+            # skip rewriting this line if it's a label we want removed
+            if (remove_labels is not None) and (label in remove_labels):
+                continue
+
             truncated = parts[1]
             occluded = parts[2]
             alpha = parts[3]
@@ -462,8 +467,9 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
-    renames = {}
+    renames = None
     if args["rename_labels"]:
+        renames = {}
         for rename_labels in args["rename_labels"].split():
             from_label, to_label = rename_labels.split(":")
             renames[from_label] = to_label
