@@ -27,7 +27,7 @@ _logger = logging.getLogger(__name__)
 def clean_darknet(
         labels_dir: str,
         images_dir: str,
-        label_renames: Dict,
+        label_replacements: Dict,
         problems_dir: str = None,
 ):
     """
@@ -35,7 +35,7 @@ def clean_darknet(
 
     :param labels_dir:
     :param images_dir:
-    :param label_renames:
+    :param label_replacements:
     :param problems_dir:
     :return:
     """
@@ -81,9 +81,9 @@ def clean_darknet(
             bbox_max_x = float(parts[3])
             bbox_max_y = float(parts[4])
 
-            if (label_renames is not None) and (label in label_renames):
+            if (label_replacements is not None) and (label in label_replacements):
                 # update the label
-                label = label_renames[label]
+                label = label_replacements[label]
 
             # make sure we don't have wonky bounding box values
             # with mins > maxs, and if so we'll reverse them
@@ -133,7 +133,7 @@ def clean_darknet(
 def clean_kitti(
         labels_dir: str,
         images_dir: str,
-        label_renames: Dict = None,
+        label_replacements: Dict = None,
         remove_labels: List[str] = None,
         problems_dir: str = None,
 ):
@@ -142,7 +142,7 @@ def clean_kitti(
 
     :param labels_dir:
     :param images_dir:
-    :param label_renames:
+    :param label_replacements:
     :param remove_labels:
     :param problems_dir:
     :return:
@@ -213,9 +213,9 @@ def clean_kitti(
             else:
                 score = " "
 
-            if (label_renames is not None) and (label in label_renames):
+            if (label_replacements is not None) and (label in label_replacements):
                 # update the label
-                label = label_renames[label]
+                label = label_replacements[label]
 
             # make sure we don't have wonky bounding box values
             # with mins > maxs, and if so we'll reverse them
@@ -287,7 +287,7 @@ def clean_kitti(
 def clean_pascal(
         pascal_dir: str,
         images_dir: str,
-        label_renames: Dict,
+        label_replacements: Dict,
         problems_dir: str = None,
 ):
     """
@@ -295,7 +295,7 @@ def clean_pascal(
 
     :param pascal_dir:
     :param images_dir:
-    :param label_renames:
+    :param label_replacements:
     :param problems_dir:
     :return:
     """
@@ -363,15 +363,15 @@ def clean_pascal(
             # loop over all bounding boxes
             for obj in root.iter("object"):
 
-                # rename all bounding box labels if specified in the rename dictionary
+                # replace all bounding box labels if specified in the replacement dictionary
                 name = obj.find("name")
                 if name is None:
                     # drop the bounding box since it is useless with no label
                     parent = obj.getparent()
                     parent.remove(obj)
-                elif (label_renames is not None) and (name.text in label_renames):
+                elif (label_replacements is not None) and (name.text in label_replacements):
                     # update the label
-                    name.text = label_renames[name.text]
+                    name.text = label_replacements[name.text]
 
                 # for each bounding box make sure we have max
                 # values that are one less than the width/height
@@ -422,7 +422,7 @@ if __name__ == "__main__":
     # $ python clean.py --format pascal \
     #       --annotations_dir /data/datasets/delivery_truck/pascal \
     #       --images_dir /data/datasets/delivery_truck/images \
-    #       --rename_labels deivery:delivery
+    #       --replace_labels deivery:delivery
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -452,11 +452,11 @@ if __name__ == "__main__":
         help="format of input annotations",
     )
     args_parser.add_argument(
-        "--rename_labels",
+        "--replace_labels",
         required=False,
         type=str,
         nargs="*",
-        help="labels to be renamed, in format new:old (space separated)",
+        help="labels to be replaced, in format new:old (space separated)",
     )
     args_parser.add_argument(
         "--remove_labels",
@@ -467,19 +467,19 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
-    renames = None
-    if args["rename_labels"]:
-        renames = {}
-        for rename_labels in args["rename_labels"].split():
-            from_label, to_label = rename_labels.split(":")
-            renames[from_label] = to_label
+    replacements = None
+    if args["replace_labels"]:
+        replacements = {}
+        for replace_labels in args["replace_labels"].split():
+            from_label, to_label = replace_labels.split(":")
+            replacements[from_label] = to_label
 
     if args["format"] == "kitti":
 
         clean_kitti(
             args["annotations_dir"],
             args["images_dir"],
-            renames,
+            replacements,
             args["remove_labels"],
             args["problems_dir"],
         )
@@ -489,7 +489,7 @@ if __name__ == "__main__":
         clean_pascal(
             args["annotations_dir"],
             args["images_dir"],
-            renames,
+            replacements,
             args["problems_dir"],
         )
 
@@ -498,7 +498,7 @@ if __name__ == "__main__":
         clean_darknet(
             args["annotations_dir"],
             args["images_dir"],
-            renames,
+            replacements,
             args["problems_dir"],
         )
 
