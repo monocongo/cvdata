@@ -136,10 +136,8 @@ def _create_tf_example(
     """
 
     # read the image into a bytes object, get the dimensions
-    with tf.io.gfile.GFile(os.path.join(images_dir, group.filename), 'rb') as image_file:
-        encoded_jpg = image_file.read()
-    encoded_jpg_io = io.BytesIO(encoded_jpg)
-    image = Image.open(encoded_jpg_io)
+    image = Image.open(os.path.join(images_dir, group.filename))
+    img_bytes = image.tobytes()
     width, height = image.size
 
     # lists of bounding box values for the example
@@ -152,9 +150,9 @@ def _create_tf_example(
     classes_text = []
     classes = []
 
-    # for each bounding box annotation add values to the lists
+    # for each bounding box annotation add the values into the lists
     for index, row in group.object.iterrows():
-        # normalize (between 0.0 and 1.0) the bounding box coordinates
+        # normalize the bounding box coordinates to within the range (0, 1)
         xmins.append(int(row['xmin']) / width)
         xmaxs.append(int(row['xmax']) / width)
         ymins.append(int(row['ymin']) / height)
@@ -169,7 +167,7 @@ def _create_tf_example(
         'image/width': dataset_util.int64_feature(width),
         'image/filename': dataset_util.bytes_feature(filename),
         'image/source_id': dataset_util.bytes_feature(filename),
-        'image/encoded': dataset_util.bytes_feature(encoded_jpg),
+        'image/encoded': dataset_util.bytes_feature(img_bytes),
         'image/format': dataset_util.bytes_feature(image_format),
         'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
         'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
