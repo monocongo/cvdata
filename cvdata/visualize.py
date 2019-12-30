@@ -6,11 +6,16 @@ from typing import List
 from xml.etree import ElementTree
 
 import cv2
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 
 from cvdata.common import FORMAT_CHOICES as format_choices
 
+# enable eager execution for TensorFlow
+tf.enable_eager_execution()
+
+# colors for annotation boxes/labels
 _RECTANGLE_BGR = (0, 255, 0)
 _TEXT_BGR = (255, 0, 255)
 
@@ -25,7 +30,7 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def show_tfrecords(
+def show_tfrecords_tlt(
         tfrecords_dir: str,
         image_directory: str,
 ):
@@ -90,27 +95,76 @@ def show_tfrecords(
 
 
 # ------------------------------------------------------------------------------
-def bbox_tfrecord(
-        file_path: str,
-) -> List[dict]:
+def show_tfrecords_tfod(
+        tfrecords_dir: str,
+):
     """
-    Returns the labeled bounding boxes from a COCO annotation (*.json) file.
+    Displays images with bounding box annotations from all TFRecord files in a
+    directory containing TFRecord files and an associated images directory
+    containing the corresponding image files.
 
-    :param file_path: path to a COCO annotation file
-    :return: list of bounding box dictionary objects with keys "label", "x",
-        "y", "w", and "h"
+    The TFRecord format is assumed to be the one used as input for TensorFlow
+    object detection models, described here:
+    https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/using_your_own_dataset.md
+
+    :param tfrecords_dir: directory containing TFRecord files
+    :param image_directory: directory containing image files corresponding to
+        the examples contained within the vairious TFRecord files
     """
-    with open(file_path) as json_file:
-        data = json.load(json_file)
 
-    boxes = []
-    for annotation in data["annotations"]:
+    image_count = 0
+    for tfrecords_file_name in os.listdir(tfrecords_dir):
 
-        x, y, w, h = annotation["bbox"]
-        box = {"label": "", "x": x, "y": y, "w": w, "h": h}
-        boxes.append(box)
+        # parse each TFRecord file
+        tfrecords_file_path = os.path.join(tfrecords_dir, tfrecords_file_name)
+        tf_dataset = tf.data.TFRecordDataset(tfrecords_file_path)
+        for record in tf_dataset:
 
-    return boxes
+            example = tf.train.Example()
+            example.ParseFromString(record.numpy())
+            feature = example.features.feature
+            image_file_name = feature['image/filename'].bytes_list.value
+            object_class_id = feature['image/object/class/text'].bytes_list.value
+            x_min = feature['image/object/bbox/xmin'].float_list.value
+            x_max = feature['image/object/bbox/xmax'].float_list.value
+            y_min = feature['image/object/bbox/ymin'].float_list.value
+            y_max = feature['image/object/bbox/ymax'].float_list.value
+            width = feature['image/width'].int64_list.value[0]
+            height = feature['image/height'].int64_list.value[0]
+
+            # convert the image's bytes list back into an RGB array
+            img_bytes = feature['image/encoded'].bytes_list.value[0]
+            img_1d = np.fromstring(img_bytes, dtype=np.uint8)
+            img = np.reshape(img_1d, (height, width, 3))
+
+            # for each bounding box draw the rectangle and label text
+            i = 0
+            while i < len(x_min):
+
+                # draw bounding box
+                cv2.rectangle(img, (int(width * x_min[i]), int(height * y_min[i])),
+                              (int(width * x_max[i]), int(height * y_max[i])),
+                              _RECTANGLE_BGR, 2)
+                # draw the label
+                cv2.putText(
+                    img,
+                    object_class_id[i].decode(),
+                    (int(width * x_min[i]) + 3, int(height * y_min[i]) + 6),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45,
+                    _TEXT_BGR,
+                    1,
+                )
+                i += 1
+
+            # draw the annotated image
+            _logger.info(f"{image_count} Displaying {len(x_min)} boxes "
+                         f"for {image_file_name}")
+            cv2.imshow("Image", img)
+            cv2.waitKey(0)
+            image_count += 1
+
+    cv2.destroyAllWindows()
 
 
 # ------------------------------------------------------------------------------
@@ -415,7 +469,8 @@ if __name__ == "__main__":
 
     elif args["format"] == "tfrecord":
 
-        show_tfrecords(args["annotations"], args["images"])
+        # show_tfrecords_tlt(args["annotations"], args["images"])
+        show_tfrecords_tfod(args["annotations"])
 
     else:
 
