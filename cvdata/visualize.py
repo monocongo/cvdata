@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import os
-from typing import List
+from typing import Dict, List
 from xml.etree import ElementTree
 
 import cv2
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from cvdata.common import FORMAT_CHOICES as format_choices
+from cvdata.common import FORMAT_CHOICES
 
 # enable eager execution for TensorFlow
 tf.enable_eager_execution()
@@ -48,7 +48,7 @@ def show_tfrecords_tlt(
         the examples contained within the vairious TFRecord files
     """
 
-    count = 0
+    image_count = 0
     for tfrecords_file_name in os.listdir(tfrecords_dir):
 
         # parse each TFRecord file
@@ -86,10 +86,10 @@ def show_tfrecords_tlt(
                 i += 1
 
             # show the output image
-            _logger.info(f"{count} Displaying {len(x_min)} boxes for {current_image_path}")
+            _logger.info(f"{image_count} Displaying {len(x_min)} boxes for {current_image_path}")
             cv2.imshow("Image", img)
             cv2.waitKey(0)
-            count += 1
+            image_count += 1
 
     cv2.destroyAllWindows()
 
@@ -108,8 +108,6 @@ def show_tfrecords_tfod(
     https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/using_your_own_dataset.md
 
     :param tfrecords_dir: directory containing TFRecord files
-    :param image_directory: directory containing image files corresponding to
-        the examples contained within the vairious TFRecord files
     """
 
     image_count = 0
@@ -123,7 +121,7 @@ def show_tfrecords_tfod(
             example = tf.train.Example()
             example.ParseFromString(record.numpy())
             feature = example.features.feature
-            image_file_name = feature['image/filename'].bytes_list.value
+            img_file_name = feature['image/filename'].bytes_list.value
             object_class_id = feature['image/object/class/text'].bytes_list.value
             x_min = feature['image/object/bbox/xmin'].float_list.value
             x_max = feature['image/object/bbox/xmax'].float_list.value
@@ -159,7 +157,7 @@ def show_tfrecords_tfod(
 
             # draw the annotated image
             _logger.info(f"{image_count} Displaying {len(x_min)} boxes "
-                         f"for {image_file_name}")
+                         f"for {img_file_name}")
             cv2.imshow("Image", img)
             cv2.waitKey(0)
             image_count += 1
@@ -196,6 +194,7 @@ def bbox_darknet(
         file_path: str,
         width: int,
         height: int,
+        label_indices: Dict,
 ) -> List[dict]:
     """
     Returns the labeled bounding boxes from a Darknet annotation (*.txt) file.
@@ -203,6 +202,8 @@ def bbox_darknet(
     :param file_path: path to a Darknet annotation file
     :param width: width of the corresponding image
     :param height: height of the corresponding image
+    :param label_indices: dictionary mapping label indices to the corresponding
+        label text
     :return: list of bounding box dictionary objects with keys "label", "x",
         "y", "w", and "h", values are percentages between 0.0 and 1.0, and the X
         and Y values are for the center of the box
@@ -211,13 +212,13 @@ def bbox_darknet(
     boxes = []
     with open(file_path) as txt_file:
 
-        for line in txt_file.readlines():
-            parts = line.split()
+        for bbox_line in txt_file.readlines():
+            parts = bbox_line.split()
             bbox_width = int(float(parts[3]) * width)
             bbox_height = int(float(parts[4]) * height)
             box = {
                 # denormalize the bounding box coordinates
-                "label": parts[0],
+                "label": label_indices[int(parts[0])],
                 "x": int(float(parts[1]) * width) - int(bbox_width / 2),
                 "y": int(float(parts[2]) * height) - int(bbox_height / 2),
                 "w": bbox_width,
@@ -247,9 +248,9 @@ def bbox_kitti(
     boxes = []
     with open(file_path) as txt_file:
 
-        for line in txt_file.readlines():
+        for bbox_line in txt_file.readlines():
 
-            parts = line.split()
+            parts = bbox_line.split()
             label = parts[0]
             bbox_min_x = int(float(parts[4]))
             bbox_min_y = int(float(parts[5]))
@@ -424,8 +425,14 @@ if __name__ == "__main__":
         "--format",
         type=str,
         required=True,
-        choices=format_choices,
+        choices=FORMAT_CHOICES,
         help="annotation format",
+    )
+    args_parser.add_argument(
+        "--darknet_labels",
+        type=str,
+        required=False,
+        help="labels file for label indices used in Darknet annotations",
     )
     args = vars(args_parser.parse_args())
 
@@ -474,6 +481,15 @@ if __name__ == "__main__":
 
     else:
 
+        # get the label indices for Darknet
+        if args["format"] == "darknet":
+            darknet_label_indices = {}
+            with open(args["darknet_labels"], "r") as darknet_labels_file:
+                label_index = 0
+                for line in darknet_labels_file:
+                    darknet_label_indices[label_index] = line.strip()
+                    label_index += 1
+
         # for each annotation file we'll draw all bounding boxes on the corresponding image
         count = 0
         for annotation_file_name in os.listdir(args["annotations"]):
@@ -505,7 +521,7 @@ if __name__ == "__main__":
                     continue
             elif args["format"] == "darknet":
                 if annotation_file_name.endswith(".txt"):
-                    bboxes = bbox_darknet(annotations_file_path, image_width, image_height)
+                    bboxes = bbox_darknet(annotations_file_path, image_width, image_height, darknet_label_indices)
                 else:
                     continue
             elif args["format"] == "kitti":
