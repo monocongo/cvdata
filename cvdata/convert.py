@@ -290,6 +290,50 @@ def pascal_to_tfrecord(
 
 
 # ------------------------------------------------------------------------------
+def kitti_to_darknet(
+        images_dir: str,
+        kitti_dir: str,
+        darknet_dir: str,
+):
+
+    # get list of file IDs of the KITTI annotations and corresponding images
+    annotation_ext = ".txt"
+    image_ext = ".jpg"
+    file_ids = matching_ids(kitti_dir, images_dir, annotation_ext, image_ext)
+
+    # build Darknet annotations from KITTI
+    for file_id in file_ids:
+
+        # get the image's dimensions
+        image_file_name = file_id + image_ext
+        width, height, _ = image_dimensions(os.path.join(images_dir, image_file_name))
+
+        annotation_file_name = file_id + annotation_ext
+        with open(os.path.join(kitti_dir, annotation_file_name), "r") as kitti_file:
+            darknet_bboxes = []
+            for line in kitti_file:
+                parts = line.split()
+                box_width_pixels = int(parts[6]) - int(parts[4]) + 1
+                box_height_pixels = int(parts[7]) - int(parts[5]) + 1
+                darknet_bbox = {
+                    "label": parts[0],
+                    "center_x": (box_width_pixels / 2) / width,
+                    "center_y": (box_height_pixels / 2) / height,
+                    "box_width": box_width_pixels / width,
+                    "box_height": box_height_pixels / height,
+                }
+                darknet_bboxes.append(darknet_bbox)
+
+        with open(os.path.join(darknet_dir, annotation_file_name), "w") as darknet_file:
+            for darknet_bbox in darknet_bboxes:
+                darknet_file.write(
+                    f"{darknet_bbox['label']} {darknet_bbox['center_x']} "
+                    f"{darknet_bbox['center_y']} {darknet_bbox['box_width']} "
+                    f"{darknet_bbox['box_height']}"
+                )
+
+
+# ------------------------------------------------------------------------------
 def single_pascal_to_kitti(arguments: Dict):
 
     pascal_file_name = arguments["file_id"] + arguments["pascal_ext"]
