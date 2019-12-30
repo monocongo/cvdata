@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import os
-from typing import List
+from typing import Dict, List
 from xml.etree import ElementTree
 
 import cv2
@@ -108,7 +108,7 @@ def show_tfrecords_tfod(
     https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/using_your_own_dataset.md
 
     :param tfrecords_dir: directory containing TFRecord files
-    :param image_directory: directory containing image files corresponding to
+                 :param image_directory: directory containing image files corresponding to
         the examples contained within the vairious TFRecord files
     """
 
@@ -196,6 +196,7 @@ def bbox_darknet(
         file_path: str,
         width: int,
         height: int,
+        label_indices: Dict,
 ) -> List[dict]:
     """
     Returns the labeled bounding boxes from a Darknet annotation (*.txt) file.
@@ -217,7 +218,7 @@ def bbox_darknet(
             bbox_height = int(float(parts[4]) * height)
             box = {
                 # denormalize the bounding box coordinates
-                "label": parts[0],
+                "label": label_indices[int(parts[0])],
                 "x": int(float(parts[1]) * width) - int(bbox_width / 2),
                 "y": int(float(parts[2]) * height) - int(bbox_height / 2),
                 "w": bbox_width,
@@ -427,6 +428,12 @@ if __name__ == "__main__":
         choices=format_choices,
         help="annotation format",
     )
+    args_parser.add_argument(
+        "--darknet_labels",
+        type=str,
+        required=False,
+        help="labels file for label indices used in Darknet annotations",
+    )
     args = vars(args_parser.parse_args())
 
     if args["format"] == "openimages":
@@ -474,6 +481,15 @@ if __name__ == "__main__":
 
     else:
 
+        # get the label indices for Darknet
+        if args["format"] == "darknet":
+            darknet_label_indices = {}
+            with open(args["darknet_labels"], "r") as darknet_labels_file:
+                label_index = 0
+                for line in darknet_labels_file:
+                    darknet_label_indices[label_index] = line.strip()
+                    label_index += 1
+
         # for each annotation file we'll draw all bounding boxes on the corresponding image
         count = 0
         for annotation_file_name in os.listdir(args["annotations"]):
@@ -505,7 +521,7 @@ if __name__ == "__main__":
                     continue
             elif args["format"] == "darknet":
                 if annotation_file_name.endswith(".txt"):
-                    bboxes = bbox_darknet(annotations_file_path, image_width, image_height)
+                    bboxes = bbox_darknet(annotations_file_path, image_width, image_height, darknet_label_indices)
                 else:
                     continue
             elif args["format"] == "kitti":
