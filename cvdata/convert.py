@@ -294,6 +294,7 @@ def kitti_to_darknet(
         images_dir: str,
         kitti_dir: str,
         darknet_dir: str,
+        darknet_labels: str,
 ):
     """
     Creates equivalent Darknet annotation files corresponding to a dataset with
@@ -305,10 +306,16 @@ def kitti_to_darknet(
         will be written
     """
 
+    # create the Darknet annotations directory in case it doesn't yet exist
+    os.makedirs(darknet_dir, exist_ok=True)
+
     # get list of file IDs of the KITTI annotations and corresponding images
     annotation_ext = ".txt"
     image_ext = ".jpg"
     file_ids = matching_ids(kitti_dir, images_dir, annotation_ext, image_ext)
+
+    # dictionary of labels to indices
+    label_indices = {}
 
     # build Darknet annotations from KITTI
     for file_id in file_ids:
@@ -323,12 +330,18 @@ def kitti_to_darknet(
             darknet_bboxes = []
             for line in kitti_file:
                 parts = line.split()
+                label = parts[0]
+                if label in label_indices:
+                    label_index = label_indices[label]
+                else:
+                    label_index = len(label_indices)
+                    label_indices[label] = label_index
                 box_width_pixels = int(parts[6]) - int(parts[4]) + 1
                 box_height_pixels = int(parts[7]) - int(parts[5]) + 1
                 darknet_bbox = {
-                    "label": parts[0],
-                    "center_x": (box_width_pixels / 2) / width,
-                    "center_y": (box_height_pixels / 2) / height,
+                    "label_index": label_index,
+                    "center_x": ((box_width_pixels / 2)  + int(parts[4])) / width,
+                    "center_y": ((box_height_pixels / 2)  + int(parts[5])) / height,
                     "box_width": box_width_pixels / width,
                     "box_height": box_height_pixels / height,
                 }
@@ -338,10 +351,16 @@ def kitti_to_darknet(
         with open(os.path.join(darknet_dir, annotation_file_name), "w") as darknet_file:
             for darknet_bbox in darknet_bboxes:
                 darknet_file.write(
-                    f"{darknet_bbox['label']} {darknet_bbox['center_x']} "
+                    f"{darknet_bbox['label_index']} {darknet_bbox['center_x']} "
                     f"{darknet_bbox['center_y']} {darknet_bbox['box_width']} "
-                    f"{darknet_bbox['box_height']}"
+                    f"{darknet_bbox['box_height']}\n"
                 )
+
+        # write the Darknet annotation boxes into a Darknet annotation file
+        with open(os.path.join(darknet_dir, darknet_labels), "w") as darknet_labels_file:
+            index_labels = {v: k for k, v in label_indices.items()}
+            for i in range(len(index_labels)):
+                darknet_labels_file.write(f"{index_labels[i]}\n")
 
 
 # ------------------------------------------------------------------------------
@@ -757,6 +776,14 @@ if __name__ == "__main__":
         choices=FORMAT_CHOICES.append("jpg"),
         help="format of output annotations or images",
     )
+    args_parser.add_argument(
+        "--darknet_labels",
+        required=False,
+        type=str,
+        help="file name of the labels file that will correspond to the label "
+             "indices used in the Darknet annotation files, to be written "
+             "in the Darknet directory",
+    )
     args = vars(args_parser.parse_args())
 
     if args["in_format"] == "pascal":
@@ -790,10 +817,11 @@ if __name__ == "__main__":
             )
     elif args["in_format"] == "kitti":
         if args["out_format"] == "darknet":
-            # TODO issue #79
-            raise ValueError(
-                "Unsupported format conversion: "
-                f"{args['in_format']} to {args['out_format']}",
+            kitti_to_darknet(
+                args["images_dir"],
+                args["annotations_dir"],
+                args["out_dir"],
+                args["darknet_labels"],
             )
         elif args["out_format"] == "tfrecord":
             kitti_to_tfrecord(
