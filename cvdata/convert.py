@@ -218,11 +218,7 @@ def _to_tfrecord(
     for filename, x in zip(groupby.groups.keys(), groupby.groups):
         filename_groups.append(data(filename, groupby.get_group(x)))
 
-    # with tf.io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
-    #     for group in filename_groups:
-    #         tf_example = _create_tf_example(label_indices, group, images_dir)
-    #         tfrecord_writer.write(tf_example.SerializeToString())
-
+    # write the TFRecords into the specified number of "shard" files
     with contextlib2.ExitStack() as tf_record_close_stack:
         output_tfrecords = \
             tf_record_creation_util.open_sharded_output_tfrecords(
