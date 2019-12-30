@@ -1,7 +1,6 @@
 import argparse
 from collections import namedtuple
 import concurrent.futures
-import io
 import logging
 import os
 from pathlib import Path
@@ -9,9 +8,10 @@ import shutil
 from typing import Dict, List, NamedTuple, Set
 from xml.etree import ElementTree
 
+import contextlib2
 import cv2
 from object_detection.utils import dataset_util, label_map_util
-
+from object_detection.dataset_tools import tf_record_creation_util
 import pandas as pd
 from PIL import Image
 import tensorflow as tf
@@ -218,10 +218,22 @@ def _to_tfrecord(
     for filename, x in zip(groupby.groups.keys(), groupby.groups):
         filename_groups.append(data(filename, groupby.get_group(x)))
 
-    with tf.io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
-        for group in filename_groups:
+    # with tf.io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
+    #     for group in filename_groups:
+    #         tf_example = _create_tf_example(label_indices, group, images_dir)
+    #         tfrecord_writer.write(tf_example.SerializeToString())
+
+    with contextlib2.ExitStack() as tf_record_close_stack:
+        output_tfrecords = \
+            tf_record_creation_util.open_sharded_output_tfrecords(
+                tf_record_close_stack,
+                annotations_dir,
+                total_shards,
+            )
+        for index, group in enumerate(filename_groups):
             tf_example = _create_tf_example(label_indices, group, images_dir)
-            tfrecord_writer.write(tf_example.SerializeToString())
+            output_shard_index = index % total_shards
+            output_tfrecords[output_shard_index].write(tf_example.SerializeToString())
 
 
 # ------------------------------------------------------------------------------
