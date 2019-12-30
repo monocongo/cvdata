@@ -10,7 +10,8 @@ from typing import Dict, List, NamedTuple, Set
 from xml.etree import ElementTree
 
 import cv2
-from object_detection.utils import dataset_util
+from object_detection.utils import dataset_util, label_map_util
+
 import pandas as pd
 from PIL import Image
 import tensorflow as tf
@@ -201,13 +202,9 @@ def _to_tfrecord(
     :return:
     """
 
-    # build a dictionary of integer indices starting at 1 for the class labels
-    label_indices = {}
-    with open(labels_path, "r") as labels_file:
-        label_index = 1
-        for label in labels_file:
-            label_indices[label.strip()] = label_index
-            label_index += 1
+    # build a dictionary of labels mapped to integer indices based on the label map
+    label_indices = label_map_util.create_category_index_from_labelmap(labels_path)
+    label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
 
     # get the annotation "examples" as a DataFrame
     examples_df = _dataset_bbox_examples(
@@ -223,7 +220,7 @@ def _to_tfrecord(
     for filename, x in zip(groupby.groups.keys(), groupby.groups):
         filename_groups.append(data(filename, groupby.get_group(x)))
 
-    with tf.python_io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
+    with tf.io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
         for group in filename_groups:
             tf_example = _create_tf_example(label_indices, group, images_dir)
             tfrecord_writer.write(tf_example.SerializeToString())
@@ -629,6 +626,13 @@ if __name__ == "__main__":
     # Usage: bulk PNG to JPG image conversion
     # $ python convert.py --in_format png --out_format jpg \
     #     --images_dir /datasets/vehicle/usps
+    #
+    # Usage: KITTI to TFRecord
+    # $ python convert.py --in_format kitti --out_format tfrecord \
+    #     --annotations_dir /data/kitti
+    #     --images_dir /data/images
+    #     --out_dir /data/dataset.record
+    #     --tf_label_map /data/label_map.pbtxt
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -659,10 +663,10 @@ if __name__ == "__main__":
              "parent directory of the output directory for KITTI data",
     )
     args_parser.add_argument(
-        "--tf_labels",
+        "--tf_label_map",
         required=False,
         type=str,
-        help="path to the file containing class labels (one per line) to be "
+        help="path to the protobuf text file containing the class label map "
              "used for TFRecords",
     )
     args_parser.add_argument(
@@ -714,7 +718,7 @@ if __name__ == "__main__":
             pascal_to_tfrecord(
                 args["images_dir"],
                 args["annotations_dir"],
-                args["tf_labels"],
+                args["tf_label_map"],
                 args["out_dir"],
                 args["tf_shards"],
             )
@@ -734,7 +738,7 @@ if __name__ == "__main__":
             kitti_to_tfrecord(
                 args["images_dir"],
                 args["annotations_dir"],
-                args["tf_labels"],
+                args["tf_label_map"],
                 args["out_dir"],
                 args["tf_shards"],
             )
