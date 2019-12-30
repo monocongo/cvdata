@@ -28,12 +28,14 @@ setuptools.setup(
     ],
     install_requires=[
         "boto3",
+        "contextlib2",
         "lxml",
         "numpy",
         "opencv-python",
         "pandas",
         "pillow",
         "requests",
+        'tensorflow',
         "tqdm",
     ],
 )

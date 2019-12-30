@@ -1,17 +1,24 @@
 import argparse
+from collections import namedtuple
 import concurrent.futures
 import logging
 import os
 from pathlib import Path
 import shutil
-from typing import Dict, List, Set
+from typing import Dict, List, NamedTuple, Set
 from xml.etree import ElementTree
 
+import contextlib2
 import cv2
+from object_detection.utils import dataset_util, label_map_util
+from object_detection.dataset_tools import tf_record_creation_util
+import pandas as pd
+from PIL import Image
+import tensorflow as tf
 from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
-from cvdata.utils import matching_ids
+from cvdata.utils import matching_ids, image_dimensions
 
 
 # ------------------------------------------------------------------------------
@@ -22,6 +29,264 @@ logging.basicConfig(
     datefmt="%Y-%m-%d  %H:%M:%S",
 )
 _logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------------------
+def _dataset_bbox_examples(
+        images_dir: str,
+        annotations_dir: str,
+        annotation_format: str,
+) -> pd.DataFrame:
+    """
+
+    :param images_dir: directory containing the dataset's *.jpg image files
+    :param annotations_dir: directory containing the dataset's annotation files
+    :param annotation_format: currently supported: "kitti" and "pascal"
+    :return: pandas DataFrame with rows corresponding to the dataset's bounding boxes
+    """
+
+    # we expect all images to use the *.jpg extension
+    image_ext = ".jpg"
+
+    # list of bounding box annotations we'll eventually write to CSV
+    bboxes = []
+
+    if annotation_format == "pascal":
+
+        # get the file IDs for all matching image/PASCAL pairs (i.e. the dataset)
+        annotation_ext = ".xml"
+        for file_id in matching_ids(
+                annotations_dir,
+                images_dir,
+                annotation_ext,
+                image_ext,
+        ):
+            # add all bounding boxes from the PASCAL file to the list of boxes
+            pascal_path = os.path.join(annotations_dir, file_id + annotation_ext)
+            tree = ElementTree.parse(pascal_path)
+            root = tree.getroot()
+            for member in root.findall('object'):
+                bbox_values = (
+                    root.find('filename').text,
+                    int(root.find('size')[0].text),
+                    int(root.find('size')[1].text),
+                    member[0].text,
+                    int(member[4][0].text),
+                    int(member[4][1].text),
+                    int(member[4][2].text),
+                    int(member[4][3].text),
+                )
+                bboxes.append(bbox_values)
+
+    elif annotation_format == "kitti":
+
+        # get the file IDs for all matching image/PASCAL pairs (i.e. the dataset)
+        annotation_ext = ".txt"
+        for file_id in matching_ids(
+                annotations_dir,
+                images_dir,
+                annotation_ext,
+                image_ext,
+        ):
+            # get the image dimensions from the image file since this
+            # info is not present in the corresponding KITTI annotation
+            image_file_name = file_id + image_ext
+            image_path = os.path.join(images_dir, image_file_name)
+            width, height, _ = image_dimensions(image_path)
+
+            # add all bounding boxes from the KITTI file to the list of boxes
+            kitti_path = os.path.join(annotations_dir, file_id + annotation_ext)
+            with open(kitti_path, "r") as kitti_file:
+                for line in kitti_file:
+                    kitti_box = line.split()
+                    bbox_values = (
+                        image_file_name,
+                        width,
+                        height,
+                        kitti_box[0],
+                        kitti_box[4],
+                        kitti_box[5],
+                        kitti_box[6],
+                        kitti_box[7],
+                    )
+                    bboxes.append(bbox_values)
+
+    else:
+        raise ValueError(f"Unsupported annotation format: {annotation_format}")
+
+    # stuff the bounding boxes into a pandas DataFrame
+    column_names = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
+    return pd.DataFrame(bboxes, columns=column_names)
+
+
+# ------------------------------------------------------------------------------
+def _create_tf_example(
+        label_indices: Dict,
+        group: NamedTuple,
+        images_dir: str,
+) -> tf.train.Example:
+    """
+    Creates a TensorFlow Example object representation of a group of annotations
+    for an image file.
+
+    :param label_indices: dictionary mapping class labels to their integer indices
+    :param group: namedtuple containing filename and pd.Group values
+    :param images_dir: directory containing dataset image files
+    :return: TensorFlow Example object corresponding to the group of annotations
+    """
+
+    # read the image into a bytes object, get the dimensions
+    image = Image.open(os.path.join(images_dir, group.filename))
+    img_bytes = image.tobytes()
+    width, height = image.size
+
+    # lists of bounding box values for the example
+    filename = group.filename.encode('utf8')
+    image_format = b'jpg'
+    xmins = []
+    xmaxs = []
+    ymins = []
+    ymaxs = []
+    classes_text = []
+    classes = []
+
+    # for each bounding box annotation add the values into the lists
+    for index, row in group.object.iterrows():
+        # normalize the bounding box coordinates to within the range (0, 1)
+        xmins.append(int(row['xmin']) / width)
+        xmaxs.append(int(row['xmax']) / width)
+        ymins.append(int(row['ymin']) / height)
+        ymaxs.append(int(row['ymax']) / height)
+        # get the class label and corresponding index
+        classes_text.append(row['class'].encode('utf8'))
+        classes.append(label_indices[row['class']])
+
+    # build the Example from the lists of coordinates, class labels/indices, etc.
+    tf_example = tf.train.Example(features=tf.train.Features(feature={
+        'image/height': dataset_util.int64_feature(height),
+        'image/width': dataset_util.int64_feature(width),
+        'image/filename': dataset_util.bytes_feature(filename),
+        'image/source_id': dataset_util.bytes_feature(filename),
+        'image/encoded': dataset_util.bytes_feature(img_bytes),
+        'image/format': dataset_util.bytes_feature(image_format),
+        'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
+        'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
+        'image/object/bbox/ymin': dataset_util.float_list_feature(ymins),
+        'image/object/bbox/ymax': dataset_util.float_list_feature(ymaxs),
+        'image/object/class/text': dataset_util.bytes_list_feature(classes_text),
+        'image/object/class/label': dataset_util.int64_list_feature(classes),
+    }))
+
+    return tf_example
+
+
+# ------------------------------------------------------------------------------
+def _to_tfrecord(
+        images_dir: str,
+        annotations_dir: str,
+        annotation_format: str,
+        labels_path: str,
+        tfrecord_path: str,
+        total_shards: int,
+):
+    """
+
+    :param images_dir:
+    :param annotations_dir:
+    :param annotation_format:
+    :param labels_path:
+    :param tfrecord_path:
+    :param total_shards:
+    :return:
+    """
+
+    # build a dictionary of labels mapped to integer indices based on the label map
+    label_indices = label_map_util.create_category_index_from_labelmap(labels_path)
+    label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
+
+    # get the annotation "examples" as a DataFrame
+    examples_df = _dataset_bbox_examples(
+        images_dir,
+        annotations_dir,
+        annotation_format,
+    )
+
+    # group the annotation examples by corresponding file name
+    data = namedtuple("data", ["filename", "object"])
+    groupby = examples_df.groupby("filename")
+    filename_groups = []
+    for filename, x in zip(groupby.groups.keys(), groupby.groups):
+        filename_groups.append(data(filename, groupby.get_group(x)))
+
+    # write the TFRecords into the specified number of "shard" files
+    with contextlib2.ExitStack() as tf_record_close_stack:
+        output_tfrecords = \
+            tf_record_creation_util.open_sharded_output_tfrecords(
+                tf_record_close_stack,
+                tfrecord_path,
+                total_shards,
+            )
+        for index, group in enumerate(filename_groups):
+            tf_example = _create_tf_example(label_indices, group, images_dir)
+            output_shard_index = index % total_shards
+            output_tfrecords[output_shard_index].write(tf_example.SerializeToString())
+
+
+# ------------------------------------------------------------------------------
+def kitti_to_tfrecord(
+        images_dir: str,
+        kitti_dir: str,
+        labels_path: str,
+        tfrecord_path: str,
+        total_shards: int,
+):
+    """
+    TODO
+
+    :param images_dir:
+    :param kitti_dir:
+    :param labels_path:
+    :param tfrecord_path:
+    :param total_shards:
+    :return:
+    """
+
+    return _to_tfrecord(
+        images_dir,
+        kitti_dir,
+        "kitti",
+        labels_path,
+        tfrecord_path,
+        total_shards,
+    )
+
+
+# ------------------------------------------------------------------------------
+def pascal_to_tfrecord(
+        images_dir: str,
+        pascal_dir: str,
+        labels_path: str,
+        tfrecord_path: str,
+        total_shards: int,
+):
+    """
+    TODO
+    :param images_dir:
+    :param pascal_dir:
+    :param labels_path:
+    :param tfrecord_path:
+    :param total_shards:
+    :return:
+    """
+
+    return _to_tfrecord(
+        images_dir,
+        pascal_dir,
+        "pascal",
+        labels_path,
+        tfrecord_path,
+        total_shards,
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -367,6 +632,13 @@ if __name__ == "__main__":
     # Usage: bulk PNG to JPG image conversion
     # $ python convert.py --in_format png --out_format jpg \
     #     --images_dir /datasets/vehicle/usps
+    #
+    # Usage: KITTI to TFRecord
+    # $ python convert.py --in_format kitti --out_format tfrecord \
+    #     --annotations_dir /data/kitti
+    #     --images_dir /data/images
+    #     --out_dir /data/dataset.record
+    #     --tf_label_map /data/label_map.pbtxt
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -395,6 +667,20 @@ if __name__ == "__main__":
         help="name of the file that will contain the file IDs for KITTI, "
              "required if out_format is \"kitti\", will be written into the "
              "parent directory of the output directory for KITTI data",
+    )
+    args_parser.add_argument(
+        "--tf_label_map",
+        required=False,
+        type=str,
+        help="path to the protobuf text file containing the class label map "
+             "used for TFRecords",
+    )
+    args_parser.add_argument(
+        "--tf_shards",
+        required=False,
+        type=int,
+        default=1,
+        help="the number of shards to use when creating TFRecords",
     )
     args_parser.add_argument(
         "--move_kitti_images",
@@ -433,6 +719,34 @@ if __name__ == "__main__":
                 args["images_dir"],
                 args["out_dir"],
                 args["move_kitti_images"],
+            )
+        elif args["out_format"] == "tfrecord":
+            pascal_to_tfrecord(
+                args["images_dir"],
+                args["annotations_dir"],
+                args["tf_label_map"],
+                args["out_dir"],
+                args["tf_shards"],
+            )
+        else:
+            raise ValueError(
+                "Unsupported format conversion: "
+                f"{args['in_format']} to {args['out_format']}",
+            )
+    elif args["in_format"] == "kitti":
+        if args["out_format"] == "darknet":
+            # TODO issue #79
+            raise ValueError(
+                "Unsupported format conversion: "
+                f"{args['in_format']} to {args['out_format']}",
+            )
+        elif args["out_format"] == "tfrecord":
+            kitti_to_tfrecord(
+                args["images_dir"],
+                args["annotations_dir"],
+                args["tf_label_map"],
+                args["out_dir"],
+                args["tf_shards"],
             )
         else:
             raise ValueError(
