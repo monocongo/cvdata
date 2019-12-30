@@ -17,7 +17,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
-from cvdata.utils import matching_ids
+from cvdata.utils import matching_ids, image_dimensions
 
 
 # ------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def _dataset_bbox_examples(
             # info is not present in the corresponding KITTI annotation
             image_file_name = file_id + image_ext
             image_path = os.path.join(images_dir, image_file_name)
-            width, height = Image.open(image_path).size
+            width, height = image_dimensions(image_path)
 
             # add all bounding boxes from the KITTI file to the list of boxes
             kitti_path = os.path.join(annotations_dir, file_id + annotation_ext)
@@ -151,6 +151,7 @@ def _create_tf_example(
     classes_text = []
     classes = []
 
+    # for each bounding box annotation add values to the lists
     for index, row in group.object.iterrows():
         # normalize (between 0.0 and 1.0) the bounding box coordinates
         xmins.append(row['xmin'] / width)
@@ -187,7 +188,18 @@ def _to_tfrecord(
         annotation_format: str,
         labels_path: str,
         tfrecord_path: str,
+        total_shards: int,
 ):
+    """
+
+    :param images_dir:
+    :param annotations_dir:
+    :param annotation_format:
+    :param labels_path:
+    :param tfrecord_path:
+    :param total_shards:
+    :return:
+    """
 
     # build a dictionary of integer indices starting at 1 for the class labels
     label_indices = {}
@@ -196,8 +208,6 @@ def _to_tfrecord(
         for label in labels_file:
             label_indices[label] = label_index
             label_index += 1
-
-    path = os.path.join(images_dir)
 
     # get the annotation "examples" as a DataFrame
     examples_df = _dataset_bbox_examples(
@@ -215,7 +225,7 @@ def _to_tfrecord(
 
     with tf.python_io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
         for group in filename_groups:
-            tf_example = _create_tf_example(group, path)
+            tf_example = _create_tf_example(group, images_dir)
             tfrecord_writer.write(tf_example.SerializeToString())
 
 
@@ -225,6 +235,7 @@ def kitti_to_tfrecord(
         kitti_dir: str,
         labels_path: str,
         tfrecord_path: str,
+        total_shards: int,
 ):
     """
     TODO
@@ -233,10 +244,18 @@ def kitti_to_tfrecord(
     :param kitti_dir:
     :param labels_path:
     :param tfrecord_path:
+    :param total_shards:
     :return:
     """
 
-    return _to_tfrecord(images_dir, kitti_dir, "kitti", labels_path, tfrecord_path)
+    return _to_tfrecord(
+        images_dir,
+        kitti_dir,
+        "kitti",
+        labels_path,
+        tfrecord_path,
+        total_shards,
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -245,6 +264,7 @@ def pascal_to_tfrecord(
         pascal_dir: str,
         labels_path: str,
         tfrecord_path: str,
+        total_shards: int,
 ):
     """
     TODO
@@ -252,10 +272,18 @@ def pascal_to_tfrecord(
     :param pascal_dir:
     :param labels_path:
     :param tfrecord_path:
+    :param total_shards:
     :return:
     """
 
-    return _to_tfrecord(images_dir, pascal_dir, "pascal", labels_path, tfrecord_path)
+    return _to_tfrecord(
+        images_dir,
+        pascal_dir,
+        "pascal",
+        labels_path,
+        tfrecord_path,
+        total_shards,
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -631,6 +659,20 @@ if __name__ == "__main__":
              "parent directory of the output directory for KITTI data",
     )
     args_parser.add_argument(
+        "--tf_labels",
+        required=False,
+        type=str,
+        help="path to the file containing class labels (one per line) to be "
+             "used for TFRecords",
+    )
+    args_parser.add_argument(
+        "--tf_shards",
+        required=False,
+        type=int,
+        default=1,
+        help="the number of shards to use when creating TFRecords",
+    )
+    args_parser.add_argument(
         "--move_kitti_images",
         default=False,
         action='store_true',
@@ -667,6 +709,34 @@ if __name__ == "__main__":
                 args["images_dir"],
                 args["out_dir"],
                 args["move_kitti_images"],
+            )
+        elif args["out_format"] == "tfrecord":
+            pascal_to_tfrecord(
+                args["images_dir"],
+                args["annotations_dir"],
+                args["tf_labels"],
+                args["out_dir"],
+                args["tf_shards"],
+            )
+        else:
+            raise ValueError(
+                "Unsupported format conversion: "
+                f"{args['in_format']} to {args['out_format']}",
+            )
+    elif args["in_format"] == "kitti":
+        if args["out_format"] == "darknet":
+            # TODO issue #79
+            raise ValueError(
+                "Unsupported format conversion: "
+                f"{args['in_format']} to {args['out_format']}",
+            )
+        elif args["out_format"] == "tfrecord":
+            kitti_to_tfrecord(
+                args["images_dir"],
+                args["annotations_dir"],
+                args["tf_labels"],
+                args["out_dir"],
+                args["tf_shards"],
             )
         else:
             raise ValueError(
