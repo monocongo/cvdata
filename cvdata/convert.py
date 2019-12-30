@@ -227,7 +227,7 @@ def _to_tfrecord(
         output_tfrecords = \
             tf_record_creation_util.open_sharded_output_tfrecords(
                 tf_record_close_stack,
-                annotations_dir,
+                tfrecord_path,
                 total_shards,
             )
         for index, group in enumerate(filename_groups):
