@@ -295,6 +295,15 @@ def kitti_to_darknet(
         kitti_dir: str,
         darknet_dir: str,
 ):
+    """
+    Creates equivalent Darknet annotation files corresponding to a dataset with
+    KITTI annotations.
+
+    :param images_dir: directory containing the dataset's images
+    :param kitti_dir: directory containing the dataset's KITTI annotation files
+    :param darknet_dir: directory where the equivalent Darknet annotation files
+        will be written
+    """
 
     # get list of file IDs of the KITTI annotations and corresponding images
     annotation_ext = ".txt"
@@ -308,6 +317,7 @@ def kitti_to_darknet(
         image_file_name = file_id + image_ext
         width, height, _ = image_dimensions(os.path.join(images_dir, image_file_name))
 
+        # loop over all annotation lines in the KITTI file and compute Darknet equivalents
         annotation_file_name = file_id + annotation_ext
         with open(os.path.join(kitti_dir, annotation_file_name), "r") as kitti_file:
             darknet_bboxes = []
@@ -324,6 +334,7 @@ def kitti_to_darknet(
                 }
                 darknet_bboxes.append(darknet_bbox)
 
+        # write the Darknet annotation boxes into a Darknet annotation file
         with open(os.path.join(darknet_dir, annotation_file_name), "w") as darknet_file:
             for darknet_bbox in darknet_bboxes:
                 darknet_file.write(
