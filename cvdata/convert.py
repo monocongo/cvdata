@@ -91,12 +91,12 @@ def _dataset_bbox_examples(
             # info is not present in the corresponding KITTI annotation
             image_file_name = file_id + image_ext
             image_path = os.path.join(images_dir, image_file_name)
-            width, height = image_dimensions(image_path)
+            width, height, _ = image_dimensions(image_path)
 
             # add all bounding boxes from the KITTI file to the list of boxes
             kitti_path = os.path.join(annotations_dir, file_id + annotation_ext)
             with open(kitti_path, "r") as kitti_file:
-                for line in kitti_path:
+                for line in kitti_file:
                     kitti_box = line.split()
                     bbox_values = (
                         image_file_name,
@@ -135,7 +135,7 @@ def _create_tf_example(
     """
 
     # read the image into a bytes object, get the dimensions
-    with tf.gfile.GFile(os.path.join(images_dir, group.filename), 'rb') as image_file:
+    with tf.io.gfile.GFile(os.path.join(images_dir, group.filename), 'rb') as image_file:
         encoded_jpg = image_file.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
     image = Image.open(encoded_jpg_io)
@@ -154,10 +154,10 @@ def _create_tf_example(
     # for each bounding box annotation add values to the lists
     for index, row in group.object.iterrows():
         # normalize (between 0.0 and 1.0) the bounding box coordinates
-        xmins.append(row['xmin'] / width)
-        xmaxs.append(row['xmax'] / width)
-        ymins.append(row['ymin'] / height)
-        ymaxs.append(row['ymax'] / height)
+        xmins.append(int(row['xmin']) / width)
+        xmaxs.append(int(row['xmax']) / width)
+        ymins.append(int(row['ymin']) / height)
+        ymaxs.append(int(row['ymax']) / height)
         # get the class label and corresponding index
         classes_text.append(row['class'].encode('utf8'))
         classes.append(label_indices[row['class']])
@@ -206,7 +206,7 @@ def _to_tfrecord(
     with open(labels_path, "r") as labels_file:
         label_index = 1
         for label in labels_file:
-            label_indices[label] = label_index
+            label_indices[label.strip()] = label_index
             label_index += 1
 
     # get the annotation "examples" as a DataFrame
@@ -225,7 +225,7 @@ def _to_tfrecord(
 
     with tf.python_io.TFRecordWriter(tfrecord_path) as tfrecord_writer:
         for group in filename_groups:
-            tf_example = _create_tf_example(group, images_dir)
+            tf_example = _create_tf_example(label_indices, group, images_dir)
             tfrecord_writer.write(tf_example.SerializeToString())
 
 
