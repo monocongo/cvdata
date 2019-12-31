@@ -393,11 +393,12 @@ def kitti_to_darknet(
                     f"{darknet_bbox['box_height']}\n"
                 )
 
-        # write the Darknet annotation boxes into a Darknet annotation file
-        with open(os.path.join(darknet_dir, darknet_labels), "w") as darknet_labels_file:
-            index_labels = {v: k for k, v in label_indices.items()}
-            for i in range(len(index_labels)):
-                darknet_labels_file.write(f"{index_labels[i]}\n")
+    # write the Darknet labels into a text file, one label per line,
+    # in order according to the indices used in the annotation files
+    with open(os.path.join(darknet_dir, darknet_labels), "w") as darknet_labels_file:
+        index_labels = {v: k for k, v in label_indices.items()}
+        for i in range(len(index_labels)):
+            darknet_labels_file.write(f"{index_labels[i]}\n")
 
 
 # ------------------------------------------------------------------------------
