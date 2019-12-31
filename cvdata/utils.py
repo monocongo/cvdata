@@ -1,4 +1,5 @@
 import os
+from typing import Set
 
 import PIL.Image as Image
 
@@ -26,7 +27,7 @@ def matching_ids(
         images_dir: str,
         annotations_ext: str,
         images_ext: str,
-):
+) -> Set[str]:
     """
     Given a directory and extension to use for image files and annotation files,
     find the matching file IDs across the two directories. Useful to find
