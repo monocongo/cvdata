@@ -3,13 +3,13 @@ import fileinput
 import logging
 import os
 import shutil
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from lxml import etree
 from PIL import Image
 from tqdm import tqdm
 
-from cvdata.common import FORMAT_CHOICES
+from cvdata.common import FORMAT_CHOICES, FORMAT_EXTENSIONS
 from cvdata.convert import png_to_jpg
 from cvdata.utils import matching_ids
 
@@ -24,9 +24,55 @@ logging.basicConfig(
 _logger = logging.getLogger(__name__)
 
 
+def purge_non_matching(
+        images_dir: str,
+        annotations_dir: str,
+        annotation_format: str,
+        problems_dir: str = None,
+) -> Set[str]:
+    """
+    TODO
+
+    :param images_dir:
+    :param annotations_dir:
+    :param annotation_format:
+    :param problems_dir:
+    :return:
+    """
+
+    # determine the file extensions
+    if annotation_format not in ["darknet", "kitti", "pascal"]:
+        raise ValueError(f"Unsupported annotation format: {annotation_format}")
+    else:
+        annotation_ext = FORMAT_EXTENSIONS[annotation_format]
+    image_ext = ".jpg"
+
+    # make the problem files directory if necessary, in case it doesn't already exist
+    if problems_dir is not None:
+        os.makedirs(problems_dir, exist_ok=True)
+
+    # remove files that aren't matches
+    matching_file_ids = matching_ids(annotations_dir, images_dir, annotation_ext, image_ext)
+    for directory in [annotations_dir, images_dir]:
+        for file_name in os.listdir(directory):
+            # only filter out image and Darknet label files (this is
+            # needed in case a subdirectory exists in the directory)
+            # and skip the file named "labels.txt"
+            if file_name != "labels.txt" and \
+                    (file_name.endswith(annotation_ext) or file_name.endswith(image_ext)):
+                if os.path.splitext(file_name)[0] not in matching_file_ids:
+                    unmatched_file = os.path.join(directory, file_name)
+                    if problems_dir is not None:
+                        shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
+                    else:
+                        os.remove(unmatched_file)
+
+    return matching_file_ids
+
+
 # ------------------------------------------------------------------------------
 def clean_darknet(
-        labels_dir: str,
+        darknet_dir: str,
         images_dir: str,
         label_replacements: Dict,
         label_removals: List[str] = None,
@@ -35,7 +81,7 @@ def clean_darknet(
     """
     TODO
 
-    :param labels_dir:
+    :param darknet_dir:
     :param images_dir:
     :param label_replacements:
     :param label_removals:
@@ -46,37 +92,18 @@ def clean_darknet(
     _logger.info("Cleaning dataset with Darknet annotations")
 
     # convert all PNG images to JPG, and remove the original PNG file
-    for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
+    for file_id in matching_ids(darknet_dir, images_dir, ".txt", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
         png_to_jpg(png_file_path, remove_png=True)
 
-    # get a set of file IDs of the Darknet-format annotations and corresponding images
-    file_ids = matching_ids(labels_dir, images_dir, ".txt", ".jpg")
-
-    # make the problem files directory if necessary, in case it doesn't already exist
-    if problems_dir is not None:
-        os.makedirs(problems_dir, exist_ok=True)
-
-    # remove files that aren't matches
-    for directory in [labels_dir, images_dir]:
-        for file_name in os.listdir(directory):
-            # only filter out image and Darknet label files (this is
-            # needed in case a subdirectory exists in the directory)
-            # and skip the file named "labels.txt"
-            if file_name != "labels.txt" and \
-                    (file_name.endswith(".txt") or file_name.endswith(".jpg")):
-                if os.path.splitext(file_name)[0] not in file_ids:
-                    unmatched_file = os.path.join(directory, file_name)
-                    if problems_dir is not None:
-                        shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
-                    else:
-                        os.remove(unmatched_file)
+    # get the set of file IDs of the Darknet-format annotations and corresponding images
+    file_ids = purge_non_matching(images_dir, darknet_dir, "darknet", problems_dir)
 
     # loop over all the matching files and clean the Darknet annotations
     for file_id in tqdm(file_ids):
 
         # update the Darknet label file
-        src_annotation_file_path = os.path.join(labels_dir, file_id + ".txt")
+        src_annotation_file_path = os.path.join(darknet_dir, file_id + ".txt")
         for line in fileinput.input(src_annotation_file_path, inplace=True):
 
             # get the bounding box label
@@ -144,7 +171,7 @@ def clean_darknet(
 
 # ------------------------------------------------------------------------------
 def clean_kitti(
-        labels_dir: str,
+        kitti_dir: str,
         images_dir: str,
         label_replacements: Dict = None,
         label_removals: List[str] = None,
@@ -153,7 +180,7 @@ def clean_kitti(
     """
     TODO
 
-    :param labels_dir:
+    :param kitti_dir:
     :param images_dir:
     :param label_replacements:
     :param label_removals:
@@ -164,29 +191,12 @@ def clean_kitti(
     _logger.info("Cleaning dataset with KITTI annotations")
 
     # convert all PNG images to JPG, and remove the original PNG file
-    for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
+    for file_id in matching_ids(kitti_dir, images_dir, ".txt", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
         png_to_jpg(png_file_path, remove_png=True)
 
-    # get a set of file IDs of the KITTI-format annotations and corresponding images
-    file_ids = matching_ids(labels_dir, images_dir, ".txt", ".jpg")
-
-    # make the problem files directory if necessary, in case it doesn't already exist
-    if problems_dir is not None:
-        os.makedirs(problems_dir, exist_ok=True)
-
-    # remove files that aren't matches
-    for directory in [labels_dir, images_dir]:
-        for file_name in os.listdir(directory):
-            # only filter out image and KITTI label files (this is
-            # needed in case a subdirectory exists in the directory)
-            if file_name.endswith(".txt") or file_name.endswith(".jpg"):
-                if os.path.splitext(file_name)[0] not in file_ids:
-                    unmatched_file = os.path.join(directory, file_name)
-                    if problems_dir is not None:
-                        shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
-                    else:
-                        os.remove(unmatched_file)
+    # get the set of file IDs of the Darknet-format annotations and corresponding images
+    file_ids = purge_non_matching(images_dir, kitti_dir, "kitti", problems_dir)
 
     # loop over all the matching files and clean the KITTI annotations
     for file_id in tqdm(file_ids):
@@ -198,7 +208,7 @@ def clean_kitti(
         img_width, img_height = image.size
 
         # update the image file name in the KITTI label file
-        src_annotation_file_path = os.path.join(labels_dir, file_id + ".txt")
+        src_annotation_file_path = os.path.join(kitti_dir, file_id + ".txt")
         for line in fileinput.input(src_annotation_file_path, inplace=True):
 
             parts = line.split()
@@ -324,25 +334,8 @@ def clean_pascal(
         png_file_path = os.path.join(images_dir, file_id + ".png")
         png_to_jpg(png_file_path, remove_png=True)
 
-    # get a set of file IDs of the PASCAL VOC annotations and corresponding images
-    file_ids = matching_ids(pascal_dir, images_dir, ".xml", ".jpg")
-
-    # make the problem files directory if necessary, in case it doesn't already exist
-    if problems_dir is not None:
-        os.makedirs(problems_dir, exist_ok=True)
-
-    # remove files that aren't matches
-    for directory in [pascal_dir, images_dir]:
-        for file_name in os.listdir(directory):
-            # only filter out image and PASCAL files (this is needed
-            # in case a subdirectory exists in the directory)
-            if file_name.endswith(".xml") or file_name.endswith(".jpg"):
-                if os.path.splitext(file_name)[0] not in file_ids:
-                    unmatched_file = os.path.join(directory, file_name)
-                    if problems_dir is not None:
-                        shutil.move(unmatched_file, os.path.join(problems_dir, file_name))
-                    else:
-                        os.remove(unmatched_file)
+    # get the set of file IDs of the Darknet-format annotations and corresponding images
+    file_ids = purge_non_matching(images_dir, pascal_dir, "pascal", problems_dir)
 
     # loop over all the matching files and clean the PASCAL annotations
     for i, file_id in tqdm(enumerate(file_ids)):
@@ -488,6 +481,7 @@ if __name__ == "__main__":
     )
     args = vars(args_parser.parse_args())
 
+    # make a dictionary of labels to be replaced, if provided
     replacements = None
     if args["replace_labels"]:
         replacements = {}
@@ -495,35 +489,22 @@ if __name__ == "__main__":
             from_label, to_label = replace_labels.split(":")
             replacements[from_label] = to_label
 
-    if args["format"] == "kitti":
+    # map the cleaner functions to their corresponding formats
+    cleaners = {
+        "darknet": clean_darknet,
+        "kitti": clean_kitti,
+        "pascal": clean_pascal,
+    }
 
-        clean_kitti(
-            args["annotations_dir"],
-            args["images_dir"],
-            replacements,
-            args["remove_labels"],
-            args["problems_dir"],
-        )
-
-    elif args["format"] == "pascal":
-
-        clean_pascal(
-            args["annotations_dir"],
-            args["images_dir"],
-            replacements,
-            args["remove_labels"],
-            args["problems_dir"],
-        )
-
-    elif args["format"] == "darknet":
-
-        clean_darknet(
-            args["annotations_dir"],
-            args["images_dir"],
-            replacements,
-            args["remove_labels"],
-            args["problems_dir"],
-        )
-
+    # call the appropriate cleaner function for the annotation format
+    if args["format"] not in cleaners:
+        raise ValueError(f"Unsupported annotation format: {args['format']}")
     else:
-        raise ValueError(f"Unsupported annotations format: {args['format']}")
+        cleaners[args["format"]](
+            args["annotations_dir"],
+            args["images_dir"],
+            replacements,
+            args["remove_labels"],
+            args["problems_dir"],
+        )
+
