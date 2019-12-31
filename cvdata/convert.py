@@ -181,6 +181,20 @@ def _create_tf_example(
 
 
 # ------------------------------------------------------------------------------
+def generate_label_map(
+        annotations_df: pd.DataFrame,
+        labels_path: str,
+):
+
+    with open(labels_path, "w") as label_map_file:
+        label_index = 1
+        for label in annotations_df["class"].unique():
+            item = "item {\n\tid: " + f"{label_index}\n\tname: '{label}'\n" + "}\n"
+            label_map_file.write(item)
+            label_index += 1
+
+
+# ------------------------------------------------------------------------------
 def _to_tfrecord(
         images_dir: str,
         annotations_dir: str,
@@ -200,16 +214,19 @@ def _to_tfrecord(
     :return:
     """
 
-    # build a dictionary of labels mapped to integer indices based on the label map
-    label_indices = label_map_util.create_category_index_from_labelmap(labels_path)
-    label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
-
     # get the annotation "examples" as a DataFrame
     examples_df = _dataset_bbox_examples(
         images_dir,
         annotations_dir,
         annotation_format,
     )
+
+    # generate the prototext label map file
+    generate_label_map(examples_df, labels_path)
+
+    # build a dictionary of labels mapped to integer indices based on the label map
+    label_indices = label_map_util.create_category_index_from_labelmap(labels_path)
+    label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
 
     # group the annotation examples by corresponding file name
     data = namedtuple("data", ["filename", "object"])
