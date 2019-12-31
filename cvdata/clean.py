@@ -7,6 +7,7 @@ from typing import Dict, List
 
 from lxml import etree
 from PIL import Image
+from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
 from cvdata.convert import png_to_jpg
@@ -42,6 +43,8 @@ def clean_darknet(
     :return:
     """
 
+    _logger.info("Cleaning dataset with Darknet annotations")
+
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
@@ -70,7 +73,7 @@ def clean_darknet(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the Darknet annotations
-    for file_id in file_ids:
+    for file_id in tqdm(file_ids):
 
         # update the Darknet label file
         src_annotation_file_path = os.path.join(labels_dir, file_id + ".txt")
@@ -85,55 +88,56 @@ def clean_darknet(
                 continue
 
             # get the bounding box coordinates
-            bbox_min_x = float(parts[1])
-            bbox_min_y = float(parts[2])
-            bbox_max_x = float(parts[3])
-            bbox_max_y = float(parts[4])
+            center_x = float(parts[1])
+            center_y = float(parts[2])
+            bbox_width = float(parts[3])
+            bbox_height = float(parts[4])
 
             if (label_replacements is not None) and (label in label_replacements):
                 # update the label
                 label = label_replacements[label]
 
             # make sure we don't have wonky bounding box values
-            # with mins > maxs, and if so we'll reverse them
-            if bbox_min_x > bbox_max_x:
+            # and if so we'll skip them
+            if (center_x > 1.0) or (center_x < 0.0):
                 # report the issue via log message
                 _logger.warning(
-                    "Bounding box minimum X is greater than the maximum X "
+                    "Bounding box center X is out of valid range -- skipping "
                     f"in Darknet annotation file {src_annotation_file_path}",
                 )
-                tmp_holder = bbox_min_x
-                bbox_min_x = bbox_max_x
-                bbox_max_x = tmp_holder
+                continue
 
-            if bbox_min_y > bbox_max_y:
+            if (center_y > 1.0) or (center_y < 0.0):
                 # report the issue via log message
                 _logger.warning(
-                    "Bounding box minimum Y is greater than the maximum Y "
+                    "Bounding box center Y is out of valid range -- skipping "
                     f"in Darknet annotation file {src_annotation_file_path}",
                 )
-                tmp_holder = bbox_min_y
-                bbox_min_y = bbox_max_y
-                bbox_max_y = tmp_holder
+                continue
 
-            # perform sanity checks on max values
-            if bbox_max_x > 1.0:
+            if (bbox_width > 1.0) or (bbox_width < 0.0):
+                # report the issue via log message
+                _logger.warning(
+                    "Bounding box width is out of valid range -- skipping "
+                    f"in Darknet annotation file {src_annotation_file_path}",
+                )
+                continue
 
-                # fix the issue
-                bbox_max_x = 1.0
-
-            if bbox_max_y > 1.0:
-
-                # fix the issue
-                bbox_max_y = 1.0
+            if (bbox_height > 1.0) or (bbox_height < 0.0):
+                # report the issue via log message
+                _logger.warning(
+                    "Bounding box height is out of valid range -- skipping "
+                    f"in Darknet annotation file {src_annotation_file_path}",
+                )
+                continue
 
             # write the line back into the file in-place
             darknet_parts = [
                 label,
-                f'{bbox_min_x:.4f}',
-                f'{bbox_min_y:.4f}',
-                f'{bbox_max_x:.4f}',
-                f'{bbox_max_y:.4f}',
+                f'{center_x:.4f}',
+                f'{center_y:.4f}',
+                f'{bbox_width:.4f}',
+                f'{bbox_height:.4f}',
             ]
             print(" ".join(darknet_parts))
 
@@ -156,6 +160,8 @@ def clean_kitti(
     :param problems_dir:
     :return:
     """
+
+    _logger.info("Cleaning dataset with KITTI annotations")
 
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
@@ -183,7 +189,7 @@ def clean_kitti(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the KITTI annotations
-    for file_id in file_ids:
+    for file_id in tqdm(file_ids):
 
         # get the image width and height
         jpg_file_name = file_id + ".jpg"
@@ -311,6 +317,8 @@ def clean_pascal(
     :return:
     """
 
+    _logger.info("Cleaning dataset with PASCAL annotations")
+
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(pascal_dir, images_dir, ".xml", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
@@ -337,7 +345,7 @@ def clean_pascal(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the PASCAL annotations
-    for i, file_id in enumerate(file_ids):
+    for i, file_id in tqdm(enumerate(file_ids)):
 
         # get the image width and height
         jpg_file_name = file_id + ".jpg"
@@ -453,7 +461,7 @@ if __name__ == "__main__":
     )
     args_parser.add_argument(
         "--problems_dir",
-        required=True,
+        required=False,
         type=str,
         help="path to directory where we should move problem files",
     )
