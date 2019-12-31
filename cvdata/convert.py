@@ -283,6 +283,8 @@ def kitti_to_tfrecord(
     :param total_shards: number of shards over which to spread the records
     """
 
+    _logger.info("Converting images and annotations in KITTI format to TFRecord(s)")
+
     return _to_tfrecord(
         images_dir,
         kitti_dir,
@@ -316,6 +318,8 @@ def pascal_to_tfrecord(
     :param total_shards: number of shards over which to spread the records
     """
 
+    _logger.info("Converting images and annotations in PASCAL format to TFRecord(s)")
+
     return _to_tfrecord(
         images_dir,
         pascal_dir,
@@ -343,6 +347,8 @@ def kitti_to_darknet(
         will be written
     """
 
+    _logger.info("Converting annotations in KITTI format to Darknet format equivalents")
+
     # create the Darknet annotations directory in case it doesn't yet exist
     os.makedirs(darknet_dir, exist_ok=True)
 
@@ -355,7 +361,7 @@ def kitti_to_darknet(
     label_indices = {}
 
     # build Darknet annotations from KITTI
-    for file_id in file_ids:
+    for file_id in tqdm(file_ids):
 
         # get the image's dimensions
         image_file_name = file_id + image_ext
@@ -393,11 +399,12 @@ def kitti_to_darknet(
                     f"{darknet_bbox['box_height']}\n"
                 )
 
-        # write the Darknet annotation boxes into a Darknet annotation file
-        with open(os.path.join(darknet_dir, darknet_labels), "w") as darknet_labels_file:
-            index_labels = {v: k for k, v in label_indices.items()}
-            for i in range(len(index_labels)):
-                darknet_labels_file.write(f"{index_labels[i]}\n")
+    # write the Darknet labels into a text file, one label per line,
+    # in order according to the indices used in the annotation files
+    with open(os.path.join(darknet_dir, darknet_labels), "w") as darknet_labels_file:
+        index_labels = {v: k for k, v in label_indices.items()}
+        for i in range(len(index_labels)):
+            darknet_labels_file.write(f"{index_labels[i]}\n")
 
 
 # ------------------------------------------------------------------------------
