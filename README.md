@@ -75,13 +75,21 @@ $ python rename.py --annotations_dir ~/datasets/handgun/kitti \
 ## Convert annotation formats
 In order to convert from one annotation format to another use the script 
 `cvdata/convert.py`. This script currently supports converting annotations from 
-PASCAL to KITTI and from PASCAL to OpenImages. For example: 
+PASCAL to KITTI, from PASCAL to TFRecord, from PASCAL to OpenImages, and from 
+KITTI to TFRecord. For example: 
 ```bash
 $ python convert.py --in_format pascal --out_format kitti \
     --annotations_dir /data/handgun/pascal \
     --images_dir /data/handgun/images \
     --out_dir /data/handgun/kitti \
     --kitti_ids_file handgun.txt
+
+$ python convert.py --in_format kitti --out_format tfrecord \
+    --annotations_dir /data/kitti \ 
+    --images_dir /data/images \
+    --out_dir /data/tfrecord/dataset.tfrecord \
+    --tf_label_map /data/tfrecord/label_map.pbtxt \
+    --tf_shards 2
 ``` 
 
 ## Image format conversion
