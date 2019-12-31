@@ -7,6 +7,7 @@ from typing import Dict, List
 
 from lxml import etree
 from PIL import Image
+from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
 from cvdata.convert import png_to_jpg
@@ -42,6 +43,8 @@ def clean_darknet(
     :return:
     """
 
+    _logger.info("Cleaning dataset with Darknet annotations")
+
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
@@ -70,7 +73,7 @@ def clean_darknet(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the Darknet annotations
-    for file_id in file_ids:
+    for file_id in tqdm(file_ids):
 
         # update the Darknet label file
         src_annotation_file_path = os.path.join(labels_dir, file_id + ".txt")
@@ -158,6 +161,8 @@ def clean_kitti(
     :return:
     """
 
+    _logger.info("Cleaning dataset with KITTI annotations")
+
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(labels_dir, images_dir, ".txt", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
@@ -184,7 +189,7 @@ def clean_kitti(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the KITTI annotations
-    for file_id in file_ids:
+    for file_id in tqdm(file_ids):
 
         # get the image width and height
         jpg_file_name = file_id + ".jpg"
@@ -312,6 +317,8 @@ def clean_pascal(
     :return:
     """
 
+    _logger.info("Cleaning dataset with PASCAL annotations")
+
     # convert all PNG images to JPG, and remove the original PNG file
     for file_id in matching_ids(pascal_dir, images_dir, ".xml", ".png"):
         png_file_path = os.path.join(images_dir, file_id + ".png")
@@ -338,7 +345,7 @@ def clean_pascal(
                         os.remove(unmatched_file)
 
     # loop over all the matching files and clean the PASCAL annotations
-    for i, file_id in enumerate(file_ids):
+    for i, file_id in tqdm(enumerate(file_ids)):
 
         # get the image width and height
         jpg_file_name = file_id + ".jpg"
