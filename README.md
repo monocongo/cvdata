@@ -191,3 +191,13 @@ annotations directories. For example:
 ```bash
 $ python cvdata/visualize.py --format pascal --images_dir /data/weapons/images --annotations_dir /data/weapons/pascal
 ```
+
+## Citation
+```
+@misc {cvdata,
+    author = "James Adams",
+    title  = "cvdata, an open source Python library for manipulating computer vision datasets",
+    url    = "https://github.com/monocongo/cvdata",
+    month  = "october",
+    year   = "2019--"
+}
