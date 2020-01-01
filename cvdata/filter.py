@@ -8,6 +8,28 @@ from cvdata.utils import matching_ids
 
 
 # ------------------------------------------------------------------------------
+def _darknet_labels_to_indices(
+        darknet_labels_path: str,
+) -> Dict:
+    """
+    TODO
+
+    :param darknet_labels_path:
+    :return:
+    """
+
+    label_indices = {}
+    with open(darknet_labels_path, "r") as darknet_labels_file:
+        index = 0
+        for line in darknet_labels_file:
+            label = line.split()[0]
+            label_indices[label] = index
+            index += 1
+
+    return label_indices
+
+
+# ------------------------------------------------------------------------------
 def _count_boxes_darknet(
         darknet_file_path: str,
         darknet_labels_path: str,
@@ -21,7 +43,7 @@ def _count_boxes_darknet(
     """
 
     # read the Darknet labels into a dictionary mapping label to label index
-    label_indices = darknet_labels_to_indices(darknet_labels_path)
+    label_indices = _darknet_labels_to_indices(darknet_labels_path)
 
     box_counts = {}
     with open(darknet_file_path) as darknet_file:
@@ -68,7 +90,7 @@ def _count_boxes_kitti(
 
 
 # ------------------------------------------------------------------------------
-def count_boxes(annotation_file_path, annotation_format, darknet_labels_path):
+def _count_boxes(annotation_file_path, annotation_format, darknet_labels_path):
 
     if annotation_format == "darknet":
         return _count_boxes_darknet(annotation_file_path, darknet_labels_path)
@@ -147,7 +169,7 @@ def filter_class_boxes(
         # get the count(s) of boxes per class label
         annotation_file_name = file_id + annotation_ext
         src_annotation_path = os.path.join(src_annotations_dir, annotation_file_name)
-        box_counts = count_boxes(src_annotation_path, annotation_format, darknet_labels_path)
+        box_counts = _count_boxes(src_annotation_path, annotation_format, darknet_labels_path)
 
         for label in box_counts.keys():
             if label in class_counts:
@@ -163,7 +185,13 @@ def filter_class_boxes(
             if len(remove_labels) > 0:
                 # remove the unnecessary labels from the annotation
                 # and write it into the destination directory
-                write_with_removed_labels(src_annotation_path, dest_annotation_path, remove_labels, annotation_format)
+                write_with_removed_labels(
+                    src_annotation_path,
+                    dest_annotation_path,
+                    remove_labels,
+                    annotation_format,
+                    darknet_labels_path,
+                )
             else:
                 # copy te annotation file into the destination directory as-is
                 shutil.copy(src_annotation_path, dest_annotation_path)
