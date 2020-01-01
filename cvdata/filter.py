@@ -1,7 +1,7 @@
 import argparse
 import os
 import shutil
-from typing import Dict
+from typing import Dict, Set
 
 from cvdata.common import FORMAT_CHOICES, FORMAT_EXTENSIONS
 from cvdata.utils import matching_ids
@@ -32,31 +32,28 @@ def _darknet_labels_to_indices(
 # ------------------------------------------------------------------------------
 def _count_boxes_darknet(
         darknet_file_path: str,
-        darknet_labels_path: str,
+        darknet_label_indices: Dict,
 ) -> Dict:
     """
     TODO
 
     :param darknet_file_path:
-    :param darknet_labels_path:
+    :param darknet_label_indices:
     :return: dictionary with labels mapped to their bounding box counts
     """
-
-    # read the Darknet labels into a dictionary mapping label to label index
-    label_indices = _darknet_labels_to_indices(darknet_labels_path)
 
     box_counts = {}
     with open(darknet_file_path) as darknet_file:
         for bbox_line in darknet_file:
             parts = bbox_line.split()
             label_index = int(parts[0])
-            if label_index not in label_indices:
+            if label_index not in darknet_label_indices:
                 raise ValueError(
                     f"Unexpected label index ({label_index} found in Darknet "
                     f"annotation file {darknet_file_path}, incompatible with "
-                    f"the Darknet labels file {darknet_labels_path}")
+                    f"the provided Darknet labels file")
             else:
-                label = label_indices[label_index]
+                label = darknet_label_indices[label_index]
                 if label in box_counts:
                     box_counts[label] = box_counts[label] + 1
                 else:
@@ -90,12 +87,79 @@ def _count_boxes_kitti(
 
 
 # ------------------------------------------------------------------------------
-def _count_boxes(annotation_file_path, annotation_format, darknet_labels_path):
+def _count_boxes(
+        annotation_file_path: str,
+        annotation_format: str,
+        darknet_label_indices: Dict,
+) -> Dict:
 
     if annotation_format == "darknet":
-        return _count_boxes_darknet(annotation_file_path, darknet_labels_path)
+        return _count_boxes_darknet(annotation_file_path, darknet_label_indices)
     elif annotation_format == "kitti":
         return _count_boxes_kitti(annotation_file_path)
+    else:
+        raise ValueError(f"Unsupported annotation format: {annotation_format}")
+
+
+# ------------------------------------------------------------------------------
+def _write_with_removed_labels_darknet(
+        src_darknet_path,
+        dest_darknet_path,
+        darknet_valid_indices: Set,
+):
+    """
+    TODO
+
+    :param src_darknet_path:
+    :param dest_darknet_path:
+    :param darknet_valid_indices:
+    :return:
+    """
+
+    with open(dest_darknet_path, "w") as dest_darknet_file:
+        with open(src_darknet_path, "r") as src_darknet_file:
+            for line in src_darknet_file:
+                label_index = line.split()[0]
+                if label_index in darknet_valid_indices:
+                    dest_darknet_file.write(line)
+
+
+# ------------------------------------------------------------------------------
+def _write_with_removed_labels_kitti(
+        src_kitti_path,
+        dest_kitti_path,
+        valid_labels,
+):
+
+    with open(dest_kitti_path, "w") as dest_kitti_file:
+        with open(src_kitti_path, "r") as src_kitti_file:
+            for line in src_kitti_file:
+                label = line.split()[0]
+                if label in valid_labels:
+                    dest_kitti_file.write(line)
+
+
+# ------------------------------------------------------------------------------
+def _write_with_removed_labels(
+        src_annotation_path,
+        dest_annotation_path,
+        annotation_format,
+        valid_labels: Set = None,
+        darknet_valid_indices = None,
+):
+
+    if annotation_format == "darknet":
+        return _write_with_removed_labels_darknet(
+            src_annotation_path,
+            dest_annotation_path,
+            darknet_valid_indices,
+        )
+    elif annotation_format == "kitti":
+        return _write_with_removed_labels_kitti(
+            src_annotation_path,
+            dest_annotation_path,
+            valid_labels,
+        )
     else:
         raise ValueError(f"Unsupported annotation format: {annotation_format}")
 
@@ -135,7 +199,7 @@ def filter_class_boxes(
         )
 
     # determine the file extension to be used for annotations
-    if annotation_format not in ["darknet", "kitti", "pascal"]:
+    if annotation_format not in ["darknet", "kitti"]:
         raise ValueError(f"Unsupported annotation format: {annotation_format}")
     else:
         annotation_ext = FORMAT_EXTENSIONS[annotation_format]
@@ -157,19 +221,36 @@ def filter_class_boxes(
             image_ext,
         )
 
+    # if we're processing Darknet annotations then read the labels file to get
+    # a mapping of labels to indices used with the Darknet annotation files
+    darknet_label_indices = None
+    if annotation_format == "darknet":
+        # read the Darknet labels into a dictionary mapping label to label index
+        darknet_label_indices = _darknet_labels_to_indices(darknet_labels_path)
+
+        # get the set of valid indices, i.e. all Darknet indices
+        # corresponding to the labels to be included in the filtered dataset
+        darknet_valid_indices = {}
+        valid_labels = class_counts.keys()
+        for darknet_label, index in darknet_label_indices.items():
+            if darknet_label in valid_labels:
+                darknet_valid_indices.add(index)
+
     # loop over all the possible image/annotation file pairs
     for file_id in file_ids:
 
         # only include the file if we find a box for one of the specified labels
         include_file = False
 
-        # list of any box labels found that aren't in list of specified labels
-        remove_labels = []
+        # if any labels are found in the annotation file that aren't included
+        # in the list of image classes to filter then we'll want to remove the
+        # boxes from the annotation file before writing to the destination directory
+        remove_labels = False
 
         # get the count(s) of boxes per class label
         annotation_file_name = file_id + annotation_ext
         src_annotation_path = os.path.join(src_annotations_dir, annotation_file_name)
-        box_counts = _count_boxes(src_annotation_path, annotation_format, darknet_labels_path)
+        box_counts = _count_boxes(src_annotation_path, annotation_format, darknet_label_indices)
 
         for label in box_counts.keys():
             if label in class_counts:
@@ -185,12 +266,12 @@ def filter_class_boxes(
             if len(remove_labels) > 0:
                 # remove the unnecessary labels from the annotation
                 # and write it into the destination directory
-                write_with_removed_labels(
+                _write_with_removed_labels(
                     src_annotation_path,
                     dest_annotation_path,
-                    remove_labels,
                     annotation_format,
-                    darknet_labels_path,
+                    valid_labels,
+                    darknet_valid_indices,
                 )
             else:
                 # copy te annotation file into the destination directory as-is
