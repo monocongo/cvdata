@@ -6,14 +6,18 @@ from typing import Dict, Set
 from cvdata.common import FORMAT_CHOICES, FORMAT_EXTENSIONS
 from cvdata.utils import matching_ids
 
+
+# ------------------------------------------------------------------------------
 def _darknet_indices_to_labels(
         darknet_labels_path: str,
 ) -> Dict:
     """
     TODO
 
-    :param darknet_labels_path:
-    :return:
+    :param darknet_labels_path: path to the file containing labels used in
+        the Darknet dataset, should correspond to the labels used in the Darknet
+        annotation file
+    :return: dictionary mapping index values to corresponding labels text
     """
 
     index_labels = {}
@@ -27,38 +31,18 @@ def _darknet_indices_to_labels(
     return index_labels
 
 
-# # ------------------------------------------------------------------------------
-# def _darknet_labels_to_indices(
-#         darknet_labels_path: str,
-# ) -> Dict:
-#     """
-#     TODO
-#
-#     :param darknet_labels_path:
-#     :return:
-#     """
-#
-#     label_indices = {}
-#     with open(darknet_labels_path, "r") as darknet_labels_file:
-#         index = 0
-#         for line in darknet_labels_file:
-#             darknet_label = line.split()[0]
-#             label_indices[darknet_label] = index
-#             index += 1
-#
-#     return label_indices
-#
-#
 # ------------------------------------------------------------------------------
 def _count_boxes_darknet(
         darknet_file_path: str,
         darknet_label_indices: Dict,
 ) -> Dict:
     """
-    TODO
+    Counts the boxes in a KITTI annotation file and returns a dictionary mapping
+    the labels to the corresponding count of bounding boxes with that label.
 
-    :param darknet_file_path:
-    :param darknet_label_indices:
+    :param darknet_file_path: path to a Darknet annotation file
+    :param darknet_label_indices: dictionary of label indices to corresponding
+        label texts
     :return: dictionary with labels mapped to their bounding box counts
     """
 
@@ -87,10 +71,11 @@ def _count_boxes_kitti(
         kitti_file_path: str,
 ) -> Dict:
     """
-    TODO
+    Counts the boxes in a KITTI annotation file and returns a dictionary mapping
+    the labels to the corresponding count of bounding boxes with that label.
 
-    :param kitti_file_path:
-    :return:
+    :param kitti_file_path: path to a KITTI annotation file
+    :return: dictionary with labels mapped to their bounding box counts
     """
 
     box_counts = {}
@@ -113,14 +98,15 @@ def _count_boxes(
         darknet_label_indices: Dict = None,
 ) -> Dict:
     """
-    TODO
+    Counts the number of bounding boxes in an annotation file, per label.
 
     :param annotation_file_path: the annotation file from which we'll count
         the number of bounding boxes per label
     :param annotation_format: format of the annotation files
     :param darknet_label_indices: dictionary of labels to the indices used
         within Darknet files, only relevant/required for Darknet format
-    :return:
+    :return: dictionary mapping labels to the number of bounding boxes
+        in the annotation file for that class label
     """
 
     if annotation_format == "darknet":
@@ -138,7 +124,9 @@ def _write_with_removed_labels_darknet(
         darknet_valid_indices: Set,
 ):
     """
-    TODO
+    Writes a Darknet annotation file containing only valid label indices,
+    essentially a copy of the source Darknet file without any bounding boxes
+    that contain "non-valid" indices.
 
     :param src_darknet_path:
     :param dest_darknet_path:
@@ -160,7 +148,9 @@ def _write_with_removed_labels_kitti(
         valid_labels,
 ):
     """
-    TODO
+    Writes a KITTI annotation file containing only valid label labels,
+    essentially a copy of the source KITTI file without any bounding boxes
+    that contain "non-valid" labels.
 
     :param src_kitti_path:
     :param dest_kitti_path:
@@ -183,7 +173,9 @@ def _write_with_removed_labels(
         darknet_valid_indices: Set = None,
 ):
     """
-    TODO
+    Writes an annotation file containing only valid label labels,
+    essentially a copy of the source annotation file without any bounding boxes
+    that contain "non-valid" labels or indices.
 
     :param src_annotation_path:
     :param dest_annotation_path:
@@ -227,7 +219,8 @@ def filter_class_boxes(
     :param dest_annotations_dir:
     :param class_label_counts:
     :param annotation_format:
-    :param darknet_labels_path: path to the labels file corresponding to Darknet
+    :param darknet_labels_path: path to the labels file corresponding
+        to a Darknet-annotated dataset
     """
 
     # make sure we don't have the same directories for src and dest
@@ -271,12 +264,10 @@ def filter_class_boxes(
     # if we're processing Darknet annotations then read the labels file to get
     # a mapping of indices to labels used with the Darknet annotation files
     darknet_valid_indices = None
-    darknet_label_indices = None
     darknet_index_labels = None
     if annotation_format == "darknet":
         # read the Darknet labels into a dictionary mapping label to label index
         darknet_index_labels = _darknet_indices_to_labels(darknet_labels_path)
-        # darknet_label_indices = _darknet_labels_to_indices(darknet_labels_path)
 
         # get the set of valid indices, i.e. all Darknet indices
         # corresponding to the labels to be included in the filtered dataset
