@@ -55,7 +55,7 @@ def purge_non_matching(
     matching_file_ids = matching_ids(annotations_dir, images_dir, annotation_ext, image_ext)
     for directory in [annotations_dir, images_dir]:
         for file_name in os.listdir(directory):
-            # only filter out image and Darknet label files (this is
+            # only filter out image and Darknet annotation files (this is
             # needed in case a subdirectory exists in the directory)
             # and skip the file named "labels.txt"
             if file_name != "labels.txt" and \
@@ -102,7 +102,7 @@ def clean_darknet(
     # loop over all the matching files and clean the Darknet annotations
     for file_id in tqdm(file_ids):
 
-        # update the Darknet label file
+        # update the Darknet annotation file
         src_annotation_file_path = os.path.join(darknet_dir, file_id + ".txt")
         for line in fileinput.input(src_annotation_file_path, inplace=True):
 
@@ -207,7 +207,7 @@ def clean_kitti(
         image = Image.open(image_file_path)
         img_width, img_height = image.size
 
-        # update the image file name in the KITTI label file
+        # update the image file name in the KITTI annotation file
         src_annotation_file_path = os.path.join(kitti_dir, file_id + ".txt")
         for line in fileinput.input(src_annotation_file_path, inplace=True):
 

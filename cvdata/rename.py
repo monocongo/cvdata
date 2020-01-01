@@ -20,7 +20,7 @@ def rename_image_files(
     :param prefix: the prefix used for the new file names
     :param start: the number at which the enumeration portion of the new file
         names should begin
-    :param digits: the number of digits (width) of the meration portion of the
+    :param digits: the number of digits (width) of the enumeration portion of the
         new file names
     """
 
@@ -109,4 +109,4 @@ if __name__ == "__main__":
             args["digits"],
         )
     else:
-        raise ValueError("Renaming of datasets is unsupported")
+        raise ValueError("Renaming of annotated datasets is unsupported")
