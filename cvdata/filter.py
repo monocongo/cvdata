@@ -22,8 +22,8 @@ def _darknet_labels_to_indices(
     with open(darknet_labels_path, "r") as darknet_labels_file:
         index = 0
         for line in darknet_labels_file:
-            label = line.split()[0]
-            label_indices[label] = index
+            darknet_label = line.split()[0]
+            label_indices[darknet_label] = index
             index += 1
 
     return label_indices
@@ -53,11 +53,11 @@ def _count_boxes_darknet(
                     f"annotation file {darknet_file_path}, incompatible with "
                     f"the provided Darknet labels file")
             else:
-                label = darknet_label_indices[label_index]
-                if label in box_counts:
-                    box_counts[label] = box_counts[label] + 1
+                darknet_label = darknet_label_indices[label_index]
+                if darknet_label in box_counts:
+                    box_counts[darknet_label] = box_counts[darknet_label] + 1
                 else:
-                    box_counts[label] = 1
+                    box_counts[darknet_label] = 1
 
     return box_counts
 
@@ -77,11 +77,11 @@ def _count_boxes_kitti(
     with open(kitti_file_path) as kitti_file:
         for bbox_line in kitti_file:
             parts = bbox_line.split()
-            label = int(parts[0])
-            if label in box_counts:
-                box_counts[label] = box_counts[label] + 1
+            kitti_label = int(parts[0])
+            if kitti_label in box_counts:
+                box_counts[kitti_label] = box_counts[kitti_label] + 1
             else:
-                box_counts[label] = 1
+                box_counts[kitti_label] = 1
 
     return box_counts
 
@@ -134,8 +134,8 @@ def _write_with_removed_labels_kitti(
     with open(dest_kitti_path, "w") as dest_kitti_file:
         with open(src_kitti_path, "r") as src_kitti_file:
             for line in src_kitti_file:
-                label = line.split()[0]
-                if label in valid_labels:
+                kitti_label = line.split()[0]
+                if kitti_label in valid_labels:
                     dest_kitti_file.write(line)
 
 
@@ -145,7 +145,7 @@ def _write_with_removed_labels(
         dest_annotation_path,
         annotation_format,
         valid_labels: Set = None,
-        darknet_valid_indices = None,
+        darknet_valid_indices: Set = None,
 ):
 
     if annotation_format == "darknet":
@@ -170,9 +170,9 @@ def filter_class_boxes(
         src_annotations_dir: str,
         dest_images_dir: str,
         dest_annotations_dir: str,
-        class_counts: Dict,
+        class_label_counts: Dict,
         annotation_format: str,
-        darknet_labels_path = None,
+        darknet_labels_path: str = None,
 ):
     """
     TODO
@@ -181,7 +181,7 @@ def filter_class_boxes(
     :param src_annotations_dir:
     :param dest_images_dir:
     :param dest_annotations_dir:
-    :param class_counts:
+    :param class_label_counts:
     :param annotation_format:
     :param darknet_labels_path: path to the labels file corresponding to Darknet
     """
@@ -210,7 +210,7 @@ def filter_class_boxes(
     os.makedirs(dest_annotations_dir, exist_ok=True)
 
     # keep a count of the boxes we've processed for each image class type
-    processed_class_counts = {k: 0 for k in class_counts.keys()}
+    processed_class_counts = {k: 0 for k in class_label_counts.keys()}
 
     # get all file IDs for image/annotation file matches
     file_ids = \
@@ -221,8 +221,12 @@ def filter_class_boxes(
             image_ext,
         )
 
+    # only include the labels specified in the class counts dictionary
+    valid_labels = set(class_label_counts.keys())
+
     # if we're processing Darknet annotations then read the labels file to get
     # a mapping of labels to indices used with the Darknet annotation files
+    darknet_valid_indices = None
     darknet_label_indices = None
     if annotation_format == "darknet":
         # read the Darknet labels into a dictionary mapping label to label index
@@ -230,8 +234,7 @@ def filter_class_boxes(
 
         # get the set of valid indices, i.e. all Darknet indices
         # corresponding to the labels to be included in the filtered dataset
-        darknet_valid_indices = {}
-        valid_labels = class_counts.keys()
+        darknet_valid_indices = set()
         for darknet_label, index in darknet_label_indices.items():
             if darknet_label in valid_labels:
                 darknet_valid_indices.add(index)
@@ -245,27 +248,27 @@ def filter_class_boxes(
         # if any labels are found in the annotation file that aren't included
         # in the list of image classes to filter then we'll want to remove the
         # boxes from the annotation file before writing to the destination directory
-        remove_labels = False
+        irrelevant_labels_found = False
 
         # get the count(s) of boxes per class label
         annotation_file_name = file_id + annotation_ext
         src_annotation_path = os.path.join(src_annotations_dir, annotation_file_name)
         box_counts = _count_boxes(src_annotation_path, annotation_format, darknet_label_indices)
 
-        for label in box_counts.keys():
-            if label in class_counts:
-                processed_class_count = processed_class_counts[label]
-                if processed_class_counts[label] < class_counts[label]:
+        for class_label in box_counts.keys():
+            if class_label in class_label_counts:
+                processed_class_count = processed_class_counts[class_label]
+                if processed_class_counts[class_label] < class_label_counts[class_label]:
                     include_file = True
-                    processed_class_counts[label] = processed_class_count + class_counts[label]
+                    processed_class_counts[class_label] = processed_class_count + class_label_counts[class_label]
             else:
-                remove_labels.append(label)
+                irrelevant_labels_found = True
 
         if include_file:
             dest_annotation_path = os.path.join(dest_annotations_dir, annotation_file_name)
-            if len(remove_labels) > 0:
-                # remove the unnecessary labels from the annotation
-                # and write it into the destination directory
+            if irrelevant_labels_found:
+                # remove the unnecessary labels or indices from the
+                # annotation and write it into the destination directory
                 _write_with_removed_labels(
                     src_annotation_path,
                     dest_annotation_path,
@@ -312,22 +315,36 @@ if __name__ == "__main__":
         help="path to directory containing original dataset's image files",
     )
     args_parser.add_argument(
+        "--dest_annotations",
+        required=True,
+        type=str,
+        help="path to directory where the filtered dataset's annotation "
+             "files will be written",
+    )
+    args_parser.add_argument(
+        "--dest_images",
+        required=True,
+        type=str,
+        help="path to directory where the filtered dataset's image files "
+             "will be written",
+    )
+    args_parser.add_argument(
         "--format",
-        required=False,
+        required=True,
         type=str,
         choices=FORMAT_CHOICES,
         help="format of the annotations",
     )
     args_parser.add_argument(
-        "--start",
+        "--darknet_labels",
         required=False,
-        type=int,
-        default=0,
-        help="initial number to use in the enumeration",
+        type=str,
+        help="path to the Darknet labels file, only relevant if processing "
+             "a dataset with Darknet annotations (i.e. --format darknet)",
     )
     args_parser.add_argument(
         "--boxes_per_class",
-        required=False,
+        required=True,
         type=str,
         nargs="*",
         help="counts of boxes per image class type, in format class:count "
@@ -348,4 +365,6 @@ if __name__ == "__main__":
         args["dest_images"],
         args["dest_annotations"],
         class_counts,
+        args["format"],
+        args["darknet_labels"],
     )
