@@ -6,9 +6,7 @@ from typing import Dict, Set
 from cvdata.common import FORMAT_CHOICES, FORMAT_EXTENSIONS
 from cvdata.utils import matching_ids
 
-
-# ------------------------------------------------------------------------------
-def _darknet_labels_to_indices(
+def _darknet_indices_to_labels(
         darknet_labels_path: str,
 ) -> Dict:
     """
@@ -18,17 +16,39 @@ def _darknet_labels_to_indices(
     :return:
     """
 
-    label_indices = {}
+    index_labels = {}
     with open(darknet_labels_path, "r") as darknet_labels_file:
         index = 0
         for line in darknet_labels_file:
             darknet_label = line.split()[0]
-            label_indices[darknet_label] = index
+            index_labels[index] = darknet_label
             index += 1
 
-    return label_indices
+    return index_labels
 
 
+# # ------------------------------------------------------------------------------
+# def _darknet_labels_to_indices(
+#         darknet_labels_path: str,
+# ) -> Dict:
+#     """
+#     TODO
+#
+#     :param darknet_labels_path:
+#     :return:
+#     """
+#
+#     label_indices = {}
+#     with open(darknet_labels_path, "r") as darknet_labels_file:
+#         index = 0
+#         for line in darknet_labels_file:
+#             darknet_label = line.split()[0]
+#             label_indices[darknet_label] = index
+#             index += 1
+#
+#     return label_indices
+#
+#
 # ------------------------------------------------------------------------------
 def _count_boxes_darknet(
         darknet_file_path: str,
@@ -128,7 +148,7 @@ def _write_with_removed_labels_darknet(
     with open(dest_darknet_path, "w") as dest_darknet_file:
         with open(src_darknet_path, "r") as src_darknet_file:
             for line in src_darknet_file:
-                label_index = line.split()[0]
+                label_index = int(line.split()[0])
                 if label_index in darknet_valid_indices:
                     dest_darknet_file.write(line)
 
@@ -249,17 +269,19 @@ def filter_class_boxes(
     valid_labels = set(class_label_counts.keys())
 
     # if we're processing Darknet annotations then read the labels file to get
-    # a mapping of labels to indices used with the Darknet annotation files
+    # a mapping of indices to labels used with the Darknet annotation files
     darknet_valid_indices = None
     darknet_label_indices = None
+    darknet_index_labels = None
     if annotation_format == "darknet":
         # read the Darknet labels into a dictionary mapping label to label index
-        darknet_label_indices = _darknet_labels_to_indices(darknet_labels_path)
+        darknet_index_labels = _darknet_indices_to_labels(darknet_labels_path)
+        # darknet_label_indices = _darknet_labels_to_indices(darknet_labels_path)
 
         # get the set of valid indices, i.e. all Darknet indices
         # corresponding to the labels to be included in the filtered dataset
         darknet_valid_indices = set()
-        for darknet_label, index in darknet_label_indices.items():
+        for index, darknet_label in darknet_index_labels.items():
             if darknet_label in valid_labels:
                 darknet_valid_indices.add(index)
 
@@ -277,14 +299,14 @@ def filter_class_boxes(
         # get the count(s) of boxes per class label
         annotation_file_name = file_id + annotation_ext
         src_annotation_path = os.path.join(src_annotations_dir, annotation_file_name)
-        box_counts = _count_boxes(src_annotation_path, annotation_format, darknet_label_indices)
+        box_counts = _count_boxes(src_annotation_path, annotation_format, darknet_index_labels)
 
         for class_label in box_counts.keys():
             if class_label in class_label_counts:
                 processed_class_count = processed_class_counts[class_label]
                 if processed_class_counts[class_label] < class_label_counts[class_label]:
                     include_file = True
-                    processed_class_counts[class_label] = processed_class_count + class_label_counts[class_label]
+                    processed_class_counts[class_label] = processed_class_count + box_counts[class_label]
             else:
                 irrelevant_labels_found = True
 
@@ -378,9 +400,9 @@ if __name__ == "__main__":
 
     # make a dictionary of class labels mapped to their maximum box counts
     class_counts = {}
-    for class_count in args["boxes_per_class"].split():
+    for class_count in args["boxes_per_class"]:
         label, count = class_count.split(":")
-        class_counts[label] = count
+        class_counts[label] = int(count)
 
     # filter the dataset by class/count
     filter_class_boxes(
