@@ -90,8 +90,18 @@ def _count_boxes_kitti(
 def _count_boxes(
         annotation_file_path: str,
         annotation_format: str,
-        darknet_label_indices: Dict,
+        darknet_label_indices: Dict = None,
 ) -> Dict:
+    """
+    TODO
+
+    :param annotation_file_path: the annotation file from which we'll count
+        the number of bounding boxes per label
+    :param annotation_format: format of the annotation files
+    :param darknet_label_indices: dictionary of labels to the indices used
+        within Darknet files, only relevant/required for Darknet format
+    :return:
+    """
 
     if annotation_format == "darknet":
         return _count_boxes_darknet(annotation_file_path, darknet_label_indices)
@@ -113,7 +123,6 @@ def _write_with_removed_labels_darknet(
     :param src_darknet_path:
     :param dest_darknet_path:
     :param darknet_valid_indices:
-    :return:
     """
 
     with open(dest_darknet_path, "w") as dest_darknet_file:
@@ -130,7 +139,13 @@ def _write_with_removed_labels_kitti(
         dest_kitti_path,
         valid_labels,
 ):
+    """
+    TODO
 
+    :param src_kitti_path:
+    :param dest_kitti_path:
+    :param valid_labels:
+    """
     with open(dest_kitti_path, "w") as dest_kitti_file:
         with open(src_kitti_path, "r") as src_kitti_file:
             for line in src_kitti_file:
@@ -147,15 +162,24 @@ def _write_with_removed_labels(
         valid_labels: Set = None,
         darknet_valid_indices: Set = None,
 ):
+    """
+    TODO
+
+    :param src_annotation_path:
+    :param dest_annotation_path:
+    :param annotation_format:
+    :param valid_labels:
+    :param darknet_valid_indices:
+    """
 
     if annotation_format == "darknet":
-        return _write_with_removed_labels_darknet(
+        _write_with_removed_labels_darknet(
             src_annotation_path,
             dest_annotation_path,
             darknet_valid_indices,
         )
     elif annotation_format == "kitti":
-        return _write_with_removed_labels_kitti(
+        _write_with_removed_labels_kitti(
             src_annotation_path,
             dest_annotation_path,
             valid_labels,
