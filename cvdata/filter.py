@@ -1,7 +1,10 @@
 import argparse
+import os
+import shutil
 from typing import Dict
 
-from cvdata.common import FORMAT_CHOICES
+from cvdata.common import FORMAT_CHOICES, FORMAT_EXTENSIONS
+from cvdata.utils import matching_ids
 
 
 # ------------------------------------------------------------------------------
@@ -11,7 +14,7 @@ def filter_class_boxes(
         dest_images_dir: str,
         dest_annotations_dir: str,
         class_counts: Dict,
-        format: str,
+        annotation_format: str,
 ):
     """
     TODO
@@ -21,11 +24,75 @@ def filter_class_boxes(
     :param dest_images_dir:
     :param dest_annotations_dir:
     :param class_counts:
-    :param format:
+    :param annotation_format:
     """
 
-    # TODO
-    pass
+    # make sure we don't have the same directories for src and dest
+    if src_images_dir == dest_images_dir:
+        raise ValueError(
+            "Source and destination image directories are "
+            "the same, must be different",
+        )
+    if src_annotations_dir == dest_annotations_dir:
+        raise ValueError(
+            "Source and destination annotation directories are "
+            "the same, must be different",
+        )
+
+    # determine the file extension to be used for annotations
+    if annotation_format not in ["darknet", "kitti", "pascal"]:
+        raise ValueError(f"Unsupported annotation format: {annotation_format}")
+    else:
+        annotation_ext = FORMAT_EXTENSIONS[annotation_format]
+    image_ext = ".jpg"
+
+    # make the destination directories, in case they don't already exist
+    os.makedirs(dest_images_dir, exist_ok=True)
+    os.makedirs(dest_annotations_dir, exist_ok=True)
+
+    # get all file IDs for image/annotation file matches
+    file_ids = \
+        matching_ids(
+            src_annotations_dir,
+            src_images_dir,
+            annotation_ext,
+            image_ext,
+        )
+
+    # keep a count of the boxes we've processed for each image class type
+    processed_class_counts = {k: 0 for k in class_counts.keys()}
+
+    for file_id in file_ids:
+
+        include_file = False
+        remove_labels = []
+        annotation_file_name = file_id + annotation_ext
+        src_annotation_path = os.path.join(src_annotations_dir, annotation_file_name)
+        box_counts = count_boxes(src_annotation_path, annotation_format)
+        for label in box_counts.keys():
+            if label in class_counts:
+                processed_class_count = processed_class_counts[label]
+                if processed_class_counts[label] < class_counts[label]:
+                    include_file = True
+                    processed_class_counts[label] = processed_class_count + class_counts[label]
+            else:
+                remove_labels.append(label)
+
+        if include_file:
+            dest_annotation_path = os.path.join(dest_annotations_dir, annotation_file_name)
+            if len(remove_labels) > 0:
+                # remove the unnecessary labels from the annotation
+                # and write it into the destination directory
+                write_with_removed_labels(src_annotation_path, dest_annotation_path, remove_labels, annotation_format)
+            else:
+                # copy te annotation file into the destination directory as-is
+                shutil.copy(src_annotation_path, dest_annotation_path)
+
+            # copy the source image file into the destination images directory
+            image_file_name = file_id + image_ext
+            src_image_path = os.path.join(src_images_dir, image_file_name)
+            dest_image_path = os.path.join(dest_images_dir, image_file_name)
+            shutil.copy(src_image_path, dest_image_path)
 
 
 # ------------------------------------------------------------------------------
