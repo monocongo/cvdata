@@ -95,7 +95,7 @@ def _count_boxes_kitti(
     with open(kitti_file_path) as kitti_file:
         for bbox_line in kitti_file:
             parts = bbox_line.split()
-            kitti_label = int(parts[0])
+            kitti_label = parts[0]
             if kitti_label in box_counts:
                 box_counts[kitti_label] = box_counts[kitti_label] + 1
             else:
@@ -238,7 +238,7 @@ def filter_class_boxes(
 
     _logger.info(
         f"Filtering dataset into annotations directory {dest_annotations_dir} "
-        f" and images directory {dest_images_dir}"
+        f"and images directory {dest_images_dir}"
     )
 
     # make sure we don't have the same directories for src and dest
