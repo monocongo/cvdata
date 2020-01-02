@@ -1,10 +1,23 @@
 import argparse
+import logging
 import os
 import shutil
 from typing import Dict, Set
 
+from tqdm import tqdm
+
 from cvdata.common import FORMAT_CHOICES, FORMAT_EXTENSIONS
 from cvdata.utils import matching_ids
+
+
+# ------------------------------------------------------------------------------
+# set up a basic, global _logger which will write to the console
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d  %H:%M:%S",
+)
+_logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
@@ -82,7 +95,7 @@ def _count_boxes_kitti(
     with open(kitti_file_path) as kitti_file:
         for bbox_line in kitti_file:
             parts = bbox_line.split()
-            kitti_label = int(parts[0])
+            kitti_label = parts[0]
             if kitti_label in box_counts:
                 box_counts[kitti_label] = box_counts[kitti_label] + 1
             else:
@@ -223,6 +236,11 @@ def filter_class_boxes(
         to a Darknet-annotated dataset
     """
 
+    _logger.info(
+        f"Filtering dataset into annotations directory {dest_annotations_dir} "
+        f"and images directory {dest_images_dir}"
+    )
+
     # make sure we don't have the same directories for src and dest
     if src_images_dir == dest_images_dir:
         raise ValueError(
@@ -277,7 +295,7 @@ def filter_class_boxes(
                 darknet_valid_indices.add(index)
 
     # loop over all the possible image/annotation file pairs
-    for file_id in file_ids:
+    for file_id in tqdm(file_ids):
 
         # only include the file if we find a box for one of the specified labels
         include_file = False
