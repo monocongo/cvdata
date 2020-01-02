@@ -168,6 +168,19 @@ $ python split.py --images_dir /data/rifle/kitti/image_2 \
 > --move
 ```
 
+## Filtering
+The module/script `cvdata/filter.py` can be used to filter the number of 
+image/annotation files of a dataset. It currently supports limiting the number of 
+bounding boxes per class type. The filtered dataset will contain annotation files 
+with bounding boxes only for the class labels specified and limited to the number 
+of boxes specified for each class label. For example: 
+```bash
+$ python filter.py --src_annotations /data/darknet --dest_annotations /data/filtered_darknet \
+    --src_images /data/images --dest_images /data/filtered_images \
+    --darknet_labels /data/darknet/labels.txt \
+    --boxes_per_class car:6000 truck:6000
+```
+
 ## Remove duplicates
 The module/script `cvdata/duplicates.py` can be used to remove duplicate images 
 from a directory. This works on images that are similar, i.e. images don't need 
