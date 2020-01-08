@@ -2,15 +2,32 @@
 Tools for creating and manipulating computer vision datasets
 
 ## Installation
-This package can be installed into the active Python environment via `pip`, making 
-the `cvdata` module available for import within other Python code:
+
+This package can be installed into the active Python environment, making the `cvdata` 
+module available for import within other Python codes and available for utilization 
+at the command line as illustrated in the usage examples below. This package 
+is currently supported for Python version 3.7, and the installation methods below 
+assume that the package will be installed into a Python 3.7 virtual environment.
+
+##### From PyPI
+This package can be installed into the active Python environment from PyPI via 
+`pip`. In addition to installing this package from PyPI, users will also need to 
+install the TensorFlow Object Detection API from that project's GitHub repository.
 ```bash
 $ pip install cvdata
+$ pip install -e git+https://github.com/tensorflow/models.git#egg=object_detection\&subdirectory=research
 ```
-To utilize the package from command line as illustrated in the usage examples below 
-please clone/download from GitHub:
+
+##### From Source
+This package can be installed into the active Python environment as source from 
+its git repository. We'll first clone/download from GitHub, install the dependencies 
+specified in `requirements.txt`, and finally install the package into the active 
+Python environment:
 ```bash
 $ git clone git@github.com:monocongo/cvdata.git
+$ cd cvdata
+$ pip install -r requirements.txt
+$ python setup.py install
 ```
 
 ## OpenImages
@@ -18,7 +35,7 @@ To download various image classes from [OpenImages](https://storage.googleapis.c
 use the script `cvdata/openimages.py`. This script currently only supports writing 
 annotations in PASCAL VOC format. For example:
 ```bash
-$ python cvdata/openimages.py --label Handgun Shotgun Rifle \
+$ cvdata_openimages --label Handgun Shotgun Rifle \
 >   --exclusions /home/james/git/cvdata/exclusions/exclusions_weapons.txt \
 >   --base_dir /data/cvdata/weapons --format pascal \
 >   --csv_dir /data/openimages
@@ -27,7 +44,8 @@ The above will save each image class in a separate subdirectory under the base
 directory, with images in a subdirectory named "images" and the PASCAL VOC format 
 annotations in a subdirectory named "pascal".
 
-PRO-TIP: If you'll use this command more than once then be sure to utilize the 
+###### NOTE:
+If you'll use this command more than once then be sure to utilize the 
 `--csv_dir` option that specifies where to save the (rather large) CSV file containing 
 bounding box information etc., as this will save you from having to redownload this 
 large file in subsequent usages.
