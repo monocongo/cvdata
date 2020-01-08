@@ -174,8 +174,7 @@ def main():
 
     # the two dictionaries we'll build for final reporting
     label_counts = {}
-    if args["file_ids"]:
-        label_file_ids = {}
+    label_file_ids = {}
 
     if args["format"] == "openimages":
 

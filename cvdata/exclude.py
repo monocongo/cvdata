@@ -40,7 +40,7 @@ def exclude_files(
 
     # arguments validation
     if not os.path.exists(images_dir):
-            raise ValueError(f"Invalid images directory path: {images_dir}")
+        raise ValueError(f"Invalid images directory path: {images_dir}")
     if annotations is not None:
         if annotation_format is None:
             raise ValueError(

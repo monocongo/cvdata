@@ -394,8 +394,8 @@ def kitti_to_darknet(
                 box_height_pixels = float(parts[7]) - float(parts[5]) + 1
                 darknet_bbox = {
                     "label_index": label_index,
-                    "center_x": ((box_width_pixels / 2)  + float(parts[4])) / width,
-                    "center_y": ((box_height_pixels / 2)  + float(parts[5])) / height,
+                    "center_x": ((box_width_pixels / 2) + float(parts[4])) / width,
+                    "center_y": ((box_height_pixels / 2) + float(parts[5])) / height,
                     "box_width": box_width_pixels / width,
                     "box_height": box_height_pixels / height,
                 }
