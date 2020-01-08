@@ -8,14 +8,14 @@ with open(f"{parent_dir}/README.md", "r") as readme_file:
 
 setuptools.setup(
     name="cvdata",
-    version="0.0.3",
+    version="0.0.4",
     author="James Adams",
     author_email="monocongo@gmail.com",
     description="Tools for creating and manipulating computer vision datasets",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
-    python_requires="==3.7",
+    python_requires="==3.7.*",
     packages=[
         "cvdata",
     ],

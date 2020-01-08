@@ -1,2 +1,2 @@
 # version of the package, should match with setup.py
-__version__ = "0.0.3"
+__version__ = "0.0.4"
