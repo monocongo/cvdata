@@ -476,7 +476,6 @@ if __name__ == "__main__":
 
     elif args["format"] == "tfrecord":
 
-        # show_tfrecords_tlt(args["annotations"], args["images"])
         show_tfrecords_tfod(args["annotations"])
 
     else:
