@@ -247,10 +247,6 @@ def _to_tfrecord(
     # generate the prototext label map file
     label_indices = _generate_label_map(examples_df, labels_path)
 
-    # # build a dictionary of labels mapped to integer indices based on the label map
-    # label_indices = create_category_index_from_labelmap(labels_path)
-    # label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
-
     # group the annotation examples by corresponding file name
     data = namedtuple("data", ["filename", "object"])
     groupby = examples_df.groupby("filename")
