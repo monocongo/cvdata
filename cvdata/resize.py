@@ -413,24 +413,7 @@ def resize_images(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Example usages:
-    #
-    # Resize all images in a specified directory:
-    #
-    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
-    #     --output_images /ssd_training/kitti/image_2 \
-    #     --width 1024 --height 768
-    #
-    #
-    # Resize images and update the corresponding annotations:
-    #
-    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
-    #     --input_annotations /ssd_training/kitti/label_2 \
-    #     --output_images /ssd_training/kitti/image_2 \
-    #     --output_annotations /ssd_training/kitti/label_2 \
-    #     --width 1024 --height 768 --format kitti
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -502,3 +485,26 @@ if __name__ == "__main__":
             args["height"],
             args["format"],
         )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Example usages:
+    #
+    # Resize all images in a specified directory:
+    #
+    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
+    #     --output_images /ssd_training/kitti/image_2 \
+    #     --width 1024 --height 768
+    #
+    #
+    # Resize images and update the corresponding annotations:
+    #
+    # $ python resize.py --input_images /ssd_training/kitti/image_2 \
+    #     --input_annotations /ssd_training/kitti/label_2 \
+    #     --output_images /ssd_training/kitti/image_2 \
+    #     --output_annotations /ssd_training/kitti/label_2 \
+    #     --width 1024 --height 768 --format kitti
+
+    main()

@@ -139,18 +139,7 @@ def count_labels(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Analyze the dataset comprised of a collection of images and corresponding
-    # annotations.
-    #
-    # Usage:
-    #
-    # $ python analyze.py --images /home/ubuntu/data/handgun/images \
-    #       --annotations /home/ubuntu/data/handgun/annotations/coco \
-    #       --file_ids_dir /home/ubuntu/data/handgun/annotations/coco \
-    #       --format coco
-    #
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -242,3 +231,20 @@ if __name__ == "__main__":
             with open(label_file_ids_path, "w") as label_file_ids_file:
                 for file_id in file_ids_for_label:
                     label_file_ids_file.write(f"{file_id}\n")
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Analyze the dataset comprised of a collection of images and corresponding
+    # annotations.
+    #
+    # Usage:
+    #
+    # $ python analyze.py --images /home/ubuntu/data/handgun/images \
+    #       --annotations /home/ubuntu/data/handgun/annotations/coco \
+    #       --file_ids_dir /home/ubuntu/data/handgun/annotations/coco \
+    #       --format coco
+    #
+
+    main()

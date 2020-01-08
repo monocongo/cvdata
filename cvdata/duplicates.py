@@ -6,6 +6,7 @@ from typing import List
 
 import imagehash
 from PIL import Image
+from tqdm import tqdm
 
 
 # ------------------------------------------------------------------------------
@@ -33,9 +34,10 @@ def remove_duplicates(
         os.makedirs(duplicates_dir, exist_ok=True)
 
     # build a set of image hashes and a list of IDs that are duplicates
+    _logger.info("Building image hashes and identifying duplicates...")
     image_hashes = set()
     duplicate_ids = []
-    for image_file_name in os.listdir(images_dir):
+    for image_file_name in tqdm(os.listdir(images_dir)):
 
         # only process JPG images
         if not image_file_name.endswith(".jpg"):
@@ -50,9 +52,12 @@ def remove_duplicates(
             duplicate_ids.append(image_id)
         else:
             image_hashes.add(image_hash)
+    _logger.info("Done")
 
+    # move or remove the duplicates
+    _logger.info("Moving/removing duplicate images...")
     duplicate_files = []
-    for duplicate_id in duplicate_ids:
+    for duplicate_id in tqdm(duplicate_ids):
 
         image_file_name = duplicate_id + ".jpg"
         image_path = os.path.join(images_dir, image_file_name)
@@ -63,10 +68,12 @@ def remove_duplicates(
             os.remove(image_path)
         else:
             shutil.move(image_path, os.path.join(duplicates_dir, image_file_name))
+    _logger.info("Done")
 
     # move/remove corresponding annotations, if specified
     if annotations_dir is not None:
-        for annotation_file_name in os.listdir(annotations_dir):
+        _logger.info("Moving/removing corresponding duplicate annotations...")
+        for annotation_file_name in tqdm(os.listdir(annotations_dir)):
             if os.path.splitext(annotation_file_name)[0] in duplicate_ids:
                 annotation_path = os.path.join(annotations_dir, annotation_file_name)
                 if duplicates_dir is None:
@@ -76,18 +83,13 @@ def remove_duplicates(
                         annotation_path,
                         os.path.join(duplicates_dir, annotation_file_name),
                     )
+        _logger.info("Done")
 
     return duplicate_files
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Usage:
-    #
-    # $ python duplicates.py --images_dir /data/trucks/ups/images \
-    # >      --annotations_dir /data/trucks/ups/pascal \
-    # >      --dups_dir /data/trucks/ups/dups
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -116,3 +118,15 @@ if __name__ == "__main__":
         annotations_dir=args["annotations_dir"],
         duplicates_dir=args["dups_dir"],
     )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Usage:
+    #
+    # $ python duplicates.py --images_dir /data/trucks/ups/images \
+    # >      --annotations_dir /data/trucks/ups/pascal \
+    # >      --dups_dir /data/trucks/ups/dups
+
+    main()

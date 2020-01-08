@@ -8,14 +8,14 @@ with open(f"{parent_dir}/README.md", "r") as readme_file:
 
 setuptools.setup(
     name="cvdata",
-    version="0.0.3",
+    version="0.0.4",
     author="James Adams",
     author_email="monocongo@gmail.com",
     description="Tools for creating and manipulating computer vision datasets",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
-    python_requires="==3.7",
+    python_requires="==3.7.*",
     packages=[
         "cvdata",
     ],
@@ -30,7 +30,7 @@ setuptools.setup(
         "boto3",
         "contextlib2",
         "lxml",
-        "object_detection @ git+ssh://github.com/tensorflow/models.git@9302933b93f573ac92026ccc48b3b0a4df7b1fda#egg=object_detection&subdirectory=research",
+        "ImageHash",
         "opencv-python",
         "pandas",
         "pillow",
@@ -38,4 +38,20 @@ setuptools.setup(
         "tensorflow",
         "tqdm",
     ],
+    entry_points={
+        "console_scripts": [
+            "cvdata_analyze=cvdata.analyze:main",
+            "cvdata_clean=cvdata.clean:main",
+            "cvdata_convert=cvdata.convert:main",
+            "cvdata_duplicates=cvdata.duplicates:main",
+            "cvdata_exclude=cvdata.exclude:main",
+            "cvdata_filter=cvdata.filter:main",
+            "cvdata_openimages=cvdata.openimages:main",
+            "cvdata_relabel=cvdata.relabel:main",
+            "cvdata_rename=cvdata.rename:main",
+            "cvdata_resize=cvdata.resize:main",
+            "cvdata_split=cvdata.split:main",
+            "cvdata_visualize=cvdata.visualize:main",
+        ]
+    },
 )

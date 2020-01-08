@@ -343,17 +343,7 @@ def filter_class_boxes(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Usage: filter a dataset down to a collection fo image and annotation files
-    #        so that it contains a specified number of annotations (bounding
-    #        boxes) per image class type
-    #
-    # $ python filter.py --format kitti --src_images /data/original/images \
-    # >   --src_annotations /data/original/kitti \
-    # >   --dest_images /data/filtered/images \
-    # >   --dest_annotations /data/filtered/kitti \
-    # >   --boxes_per_class dog:5000 cat:5000 panda:5000
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -423,3 +413,19 @@ if __name__ == "__main__":
         args["format"],
         args["darknet_labels"],
     )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Usage: filter a dataset down to a collection fo image and annotation files
+    #        so that it contains a specified number of annotations (bounding
+    #        boxes) per image class type
+    #
+    # $ python filter.py --format kitti --src_images /data/original/images \
+    # >   --src_annotations /data/original/kitti \
+    # >   --dest_images /data/filtered/images \
+    # >   --dest_annotations /data/filtered/kitti \
+    # >   --boxes_per_class dog:5000 cat:5000 panda:5000
+
+    main()
