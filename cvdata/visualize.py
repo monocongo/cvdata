@@ -469,8 +469,8 @@ def main():
     else:
 
         # get the label indices for Darknet
+        darknet_label_indices = {}
         if args["format"] == "darknet":
-            darknet_label_indices = {}
             with open(args["darknet_labels"], "r") as darknet_labels_file:
                 label_index = 0
                 for line in darknet_labels_file:
@@ -499,7 +499,7 @@ def main():
                 continue
 
             # read the bounding boxes from the annotation file
-            bboxes = []
+            # bboxes = []
 
             if args["format"] == "coco":
                 if annotation_file_name.endswith(".json"):

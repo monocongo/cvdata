@@ -153,9 +153,7 @@ def resize_image(
 
     # resize if necessary
     if (original_width != new_width) or (original_height != new_height):
-        image, scale_x, scale_y = _get_resized_image(image, new_width, new_height)
-    else:
-        scale_x = scale_y = 1.0
+        image, _, _ = _get_resized_image(image, new_width, new_height)
 
     # write the scaled/padded image to file in the output directory
     resized_image_path = os.path.join(output_images_dir, file_name)

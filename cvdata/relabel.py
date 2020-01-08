@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 from tqdm import tqdm
 
-from cvdata.common import FORMAT_CHOICES as format_choices
+from cvdata.common import FORMAT_CHOICES
 
 # ------------------------------------------------------------------------------
 # set up a basic, global _logger which will write to the console
@@ -150,7 +150,7 @@ def main():
         required=True,
         type=str,
         default="kitti",
-        choices=format_choices,
+        choices=FORMAT_CHOICES,
         help="annotation format of the annotations to be relabeled",
     )
     args = vars(args_parser.parse_args())
