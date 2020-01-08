@@ -123,11 +123,7 @@ def _relabel_pascal(arguments: Dict):
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Usage:
-    # $ python relabel.py --labels_dir /data/cvdata/pascal \
-    #   --old handgun --new firearm --format pascal
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -191,3 +187,13 @@ if __name__ == "__main__":
         )
         list(tqdm(executor.map(relabel_function, relabel_arguments_list),
                   total=len(relabel_arguments_list)))
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Usage:
+    # $ python relabel.py --labels_dir /data/cvdata/pascal \
+    #   --old handgun --new firearm --format pascal
+
+    main()

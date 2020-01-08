@@ -354,20 +354,7 @@ def split_train_valid_test_dataset(split_arguments: Dict):
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-    """
-    Usage:
-    $ python split.py \
-        --annotations_dir /data/datasets/handgun/pascal \
-        --images_dir /data/datasets/handgun/images \
-        --train_annotations_dir /data/datasets/handgun/pascal/train \
-        --train_images_dir /data/datasets/handgun/images/train \
-        --val_annotations_dir /data/datasets/handgun/pascal/valid \
-        --val_images_dir /data/datasets/handgun/images/valid \
-        --test_annotations_dir /data/datasets/handgun/pascal/test \
-        --test_images_dir /data/datasets/handgun/images/test \
-        --format pascal
-    """
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -451,3 +438,22 @@ if __name__ == "__main__":
         # split files from the images and annotations
         # directories into training, validation, and test sets
         split_train_valid_test_dataset(args)
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    """
+    Usage:
+    $ python split.py \
+        --annotations_dir /data/datasets/handgun/pascal \
+        --images_dir /data/datasets/handgun/images \
+        --train_annotations_dir /data/datasets/handgun/pascal/train \
+        --train_images_dir /data/datasets/handgun/images/train \
+        --val_annotations_dir /data/datasets/handgun/pascal/valid \
+        --val_images_dir /data/datasets/handgun/images/valid \
+        --test_annotations_dir /data/datasets/handgun/pascal/test \
+        --test_images_dir /data/datasets/handgun/images/test \
+        --format pascal
+    """
+
+    main()

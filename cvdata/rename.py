@@ -37,17 +37,7 @@ def rename_image_files(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Usage: rename names of dataset files (images and annotations)
-    # $ python rename.py --annotations_dir ~/datasets/handgun/kitti \
-    #     --images_dir ~/datasets/handgun/images \
-    #     --prefix handgun --start 100 --digits 6 \
-    #     --format kitti --kitti_ids_file file_ids.txt
-    #
-    # Usage: rename names of image files (images only)
-    # $ python rename.py --images_dir ~/datasets/handgun/images \
-    #     --prefix handgun --start 100 --digits 6
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -110,3 +100,19 @@ if __name__ == "__main__":
         )
     else:
         raise ValueError("Renaming of annotated datasets is unsupported")
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Usage: rename names of dataset files (images and annotations)
+    # $ python rename.py --annotations_dir ~/datasets/handgun/kitti \
+    #     --images_dir ~/datasets/handgun/images \
+    #     --prefix handgun --start 100 --digits 6 \
+    #     --format kitti --kitti_ids_file file_ids.txt
+    #
+    # Usage: rename names of image files (images only)
+    # $ python rename.py --images_dir ~/datasets/handgun/images \
+    #     --prefix handgun --start 100 --digits 6
+
+    main()

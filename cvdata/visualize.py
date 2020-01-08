@@ -393,19 +393,7 @@ def bbox_pascal(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Visualize images with bounding boxes specified by corresponding annotations.
-    #
-    # Usage:
-    #
-    # $ python <this_script.py> --images /home/ubuntu/data/handgun/images \
-    #       --annotations /home/ubuntu/data/handgun/annotations/coco \
-    #       --format coco
-    #
-    # $ python <this_script.py> --images /nvidia/tlt/experiments/kitti/training/image_2 \
-    #       --annotations /nvidia/tlt/experiments/tfrecords/training \
-    #       --format tfrecord
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -566,3 +554,21 @@ if __name__ == "__main__":
             # show the output image
             cv2.imshow("Image", image)
             cv2.waitKey(0)
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Visualize images with bounding boxes specified by corresponding annotations.
+    #
+    # Usage:
+    #
+    # $ python <this_script.py> --images /home/ubuntu/data/handgun/images \
+    #       --annotations /home/ubuntu/data/handgun/annotations/coco \
+    #       --format coco
+    #
+    # $ python <this_script.py> --images /nvidia/tlt/experiments/kitti/training/image_2 \
+    #       --annotations /nvidia/tlt/experiments/tfrecords/training \
+    #       --format tfrecord
+
+    main()

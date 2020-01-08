@@ -702,13 +702,10 @@ def download_image(arguments: Dict):
             error,
         )
 
+
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-    """
-    Usage:
-    $ python openimages.py --base_dir /data/datasets/openimages \
-          --format pascal --label Person --csv_dir /data/datasets/openimages
-    """
+def main():
+
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
     args_parser.add_argument(
@@ -763,3 +760,14 @@ if __name__ == "__main__":
         args["csv_dir"],
         args["limit"],
     )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    """
+    Usage:
+    $ python openimages.py --base_dir /data/datasets/openimages \
+          --format pascal --label Person --csv_dir /data/datasets/openimages
+    """
+
+    main()

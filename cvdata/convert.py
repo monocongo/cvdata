@@ -747,7 +747,7 @@ def openimages_to_pascal(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
+def main():
 
     # Usage: PASCAL to KITTI
     # $ python convert.py --annotations_dir ~/datasets/handgun/annotations/pascal \
@@ -928,3 +928,9 @@ if __name__ == "__main__":
             "Unsupported format conversion: "
             f"{args['in_format']} to {args['out_format']}",
         )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    main()

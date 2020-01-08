@@ -81,13 +81,7 @@ def remove_duplicates(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    # Usage:
-    #
-    # $ python duplicates.py --images_dir /data/trucks/ups/images \
-    # >      --annotations_dir /data/trucks/ups/pascal \
-    # >      --dups_dir /data/trucks/ups/dups
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -116,3 +110,15 @@ if __name__ == "__main__":
         annotations_dir=args["annotations_dir"],
         duplicates_dir=args["dups_dir"],
     )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    # Usage:
+    #
+    # $ python duplicates.py --images_dir /data/trucks/ups/images \
+    # >      --annotations_dir /data/trucks/ups/pascal \
+    # >      --dups_dir /data/trucks/ups/dups
+
+    main()

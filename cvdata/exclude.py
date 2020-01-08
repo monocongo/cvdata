@@ -98,14 +98,7 @@ def exclude_files(
 
 
 # ------------------------------------------------------------------------------
-if __name__ == "__main__":
-    """
-    Usage: 
-    $ python exclude.py --format pascal \
-        --annotations ~/datasets/handgun/annotations/pascal \
-        --images ~/datasets/handgun/images \
-        --exclusions ~/datasets/handgun/exclusions.txt
-    """
+def main():
 
     # parse the command line arguments
     args_parser = argparse.ArgumentParser()
@@ -144,3 +137,16 @@ if __name__ == "__main__":
         args["annotations"],
         args["format"],
     )
+
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    """
+    Usage: 
+    $ python exclude.py --format pascal \
+        --annotations ~/datasets/handgun/annotations/pascal \
+        --images ~/datasets/handgun/images \
+        --exclusions ~/datasets/handgun/exclusions.txt
+    """
+
+    main()
