@@ -15,7 +15,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
-    python_requires=">=3.0",
+    python_requires="==3.7",
     packages=[
         "cvdata",
     ],
@@ -23,19 +23,19 @@ setuptools.setup(
         "cvdata",
     ],
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
         "Operating System :: OS Independent",
     ],
     install_requires=[
         "boto3",
         "contextlib2",
         "lxml",
-        "numpy",
+        "object_detection @ git+ssh://github.com/tensorflow/models.git@9302933b93f573ac92026ccc48b3b0a4df7b1fda#egg=object_detection&subdirectory=research",
         "opencv-python",
         "pandas",
         "pillow",
         "requests",
-        'tensorflow',
+        "tensorflow",
         "tqdm",
     ],
 )
