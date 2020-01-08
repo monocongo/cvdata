@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 
 import contextlib2
 import cv2
-from object_detection.utils import dataset_util, label_map_util
+from object_detection.utils import dataset_util
 from object_detection.dataset_tools import tf_record_creation_util
 import pandas as pd
 from PIL import Image
@@ -18,7 +18,7 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
-from cvdata.utils import matching_ids, image_dimensions
+from cvdata.utils import image_dimensions, matching_ids
 
 
 # ------------------------------------------------------------------------------
@@ -184,20 +184,32 @@ def _create_tf_example(
 def _generate_label_map(
         annotations_df: pd.DataFrame,
         labels_path: str,
-):
+) -> Dict:
     """
 
     :param annotations_df: pandas DataFrame with rows for annotations, should
         contain a column named "class" which contains the label text
     :param labels_path: path to label map prototxt file that will be written
+    :return: dictionary of labels to indices represented by the label map
     """
 
+    # make the directory where the file will be created, in case it doesn't yet exist
+    os.makedirs(os.path.split(labels_path)[0], exist_ok=True)
+
+    # dictionary of labels to indices that we'll populate and return
+    label_indices = {}
+
+    # create/write the file
     with open(labels_path, "w") as label_map_file:
         label_index = 1
         for label in annotations_df["class"].unique():
             item = "item {\n    id: " + f"{label_index}\n    name: '{label}'\n" + "}\n"
             label_map_file.write(item)
             label_index += 1
+
+            label_indices[label] = label_index
+
+    return label_indices
 
 
 # ------------------------------------------------------------------------------
@@ -233,11 +245,11 @@ def _to_tfrecord(
     )
 
     # generate the prototext label map file
-    _generate_label_map(examples_df, labels_path)
+    label_indices = _generate_label_map(examples_df, labels_path)
 
-    # build a dictionary of labels mapped to integer indices based on the label map
-    label_indices = label_map_util.create_category_index_from_labelmap(labels_path)
-    label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
+    # # build a dictionary of labels mapped to integer indices based on the label map
+    # label_indices = create_category_index_from_labelmap(labels_path)
+    # label_indices = {v['name']: v['id'] for k, v in label_indices.items()}
 
     # group the annotation examples by corresponding file name
     data = namedtuple("data", ["filename", "object"])
@@ -345,6 +357,9 @@ def kitti_to_darknet(
     :param kitti_dir: directory containing the dataset's KITTI annotation files
     :param darknet_dir: directory where the equivalent Darknet annotation files
         will be written
+    :param darknet_labels: labels file corresponding to the label indices used
+        in the Darknet annotation files, will be written into the specified
+        Darknet annotations directory
     """
 
     _logger.info("Converting annotations in KITTI format to Darknet format equivalents")
