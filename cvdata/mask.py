@@ -6,6 +6,7 @@ from typing import Dict
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 from cvdata.utils import image_dimensions
 
@@ -102,7 +103,8 @@ def masks_from_vgg(
     # get a dictionary of class labels to class IDs
     class_labels = _class_labels_to_ids(class_labels_file)
 
-    for image_file_name in os.listdir(images_dir):
+    _logger.info("Generating mask files...")
+    for image_file_name in tqdm(os.listdir(images_dir)):
 
         # skip any files without a *.jpg extension
         if not image_file_name.endswith(".jpg"):
@@ -157,8 +159,7 @@ def masks_from_vgg(
             pts = pts.reshape((-1, 1, 2))
 
             # draw the polygon mask, using the class ID as the mask value
-            cv2.fillPoly(region_mask, [pts], color=[255]*3)
-            # cv2.fillPoly(region_mask, [pts], color=[class_id]*3)
+            cv2.fillPoly(region_mask, [pts], color=[class_id]*3)
 
             # if not combining all masks into a single file
             # then write this mask into its own file
@@ -172,6 +173,8 @@ def masks_from_vgg(
             # write the mask file
             mask_file_name = f"{file_id}_segmentation.png"
             cv2.imwrite(os.path.join(masks_dir, mask_file_name), region_mask)
+
+    _logger.info("Done")
 
 
 # ------------------------------------------------------------------------------
