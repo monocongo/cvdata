@@ -82,6 +82,9 @@ def masks_from_vgg(
     elif not os.path.exists(annotations_file):
         raise ValueError(f"Invalid annotations file path: {annotations_file}")
 
+    # make the masks directory if it doesn't already exist
+    os.makedirs(masks_dir, exist_ok=True)
+
     # load the contents of the annotation JSON file (created
     # using the VIA tool) and initialize the annotations dictionary
     annotations = json.loads(open(annotations_file).read())
@@ -110,11 +113,6 @@ def masks_from_vgg(
 
         # get the image's dimensions
         width, height, _ = image_dimensions(os.path.join(images_dir, image_file_name))
-
-        # allocate memory for our [height, width, num_instances] 3-D array
-        # where each "instance" (region) effectively has its own "channel"
-        num_instances = len(annotation["regions"])
-        masks = np.zeros(shape=(height, width, num_instances), dtype="uint8")
 
         # loop over each of the annotated regions
         for (i, region) in enumerate(annotation["regions"]):
@@ -147,11 +145,11 @@ def masks_from_vgg(
             pts = pts.reshape((-1, 1, 2))
 
             # draw the polygon mask, using the class ID as the mask value
-            cv2.fillPoly(region_mask, pts, np.uint8(class_id))
+            cv2.fillPoly(region_mask, [pts], color=[class_id]*3)
 
             # write the mask file
             mask_file_name = f"{file_id}_segmentation_{i}.png"
-            cv2.imwrite(os.path(masks_dir, mask_file_name))
+            cv2.imwrite(os.path.join(masks_dir, mask_file_name), region_mask)
 
 
 # ------------------------------------------------------------------------------
