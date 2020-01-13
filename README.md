@@ -216,10 +216,20 @@ annotation file names correspond to the image file names (for example `abc.jpg` 
 than removing the files if a directory for duplicates is specified. For example:
 ```bash
 $ cvdata_duplicates --images_dir /data/trucks/ups/images \
->      --annotations_dir /data/trucks/ups/pascal \
->      --dups_dir /data/trucks/ups/dups
+>   --annotations_dir /data/trucks/ups/pascal \
+>   --dups_dir /data/trucks/ups/dups
 ```
 
+## Masks
+Create masks from region polygons described in an annotation JSON file created by 
+the [VGG Image Annotator](http://www.robots.ox.ac.uk/~vgg/software/via/via.html) tool:
+```bash
+$ cvdata_mask --images /data/images \
+>   --annotations /data/via_annotations.json \
+>   --masks /data/masks \
+>   --format vgg \
+>   --classes /data/class_labels.txt
+```
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py` or the corresponding script entry point `cvdata_visualize`. 

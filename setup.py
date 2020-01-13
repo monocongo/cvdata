@@ -47,6 +47,7 @@ setuptools.setup(
             "cvdata_exclude=cvdata.exclude:main",
             "cvdata_filter=cvdata.filter:main",
             "cvdata_openimages=cvdata.openimages:main",
+            "cvdata_mask=cvdata.mask:main",
             "cvdata_relabel=cvdata.relabel:main",
             "cvdata_rename=cvdata.rename:main",
             "cvdata_resize=cvdata.resize:main",
