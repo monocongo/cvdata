@@ -64,6 +64,7 @@ def masks_from_vgg(
         annotations_file: str,
         masks_dir: str,
         class_labels_file: str,
+        combine_into_one: bool = False,
 ):
     """
     TODO
@@ -74,6 +75,8 @@ def masks_from_vgg(
         tool
     :param masks_dir: directory where mask files will be written
     :param class_labels_file: text file containing one class label per line
+    :param combine_into_one: if True then combine all mask regions for an image
+        into a single mask file
     """
 
     # arguments validation
@@ -114,11 +117,20 @@ def masks_from_vgg(
         # get the image's dimensions
         width, height, _ = image_dimensions(os.path.join(images_dir, image_file_name))
 
+        # if combining all regions into a single mask file
+        # then we'll only need to allocate the mask array once
+        if combine_into_one:
+            # allocate memory for the region mask
+            region_mask = np.zeros((height, width, 3), dtype="uint8")
+
         # loop over each of the annotated regions
         for (i, region) in enumerate(annotation["regions"]):
 
-            # allocate memory for the region mask
-            region_mask = np.zeros((height, width, 3), dtype="uint8")
+            # if not combining all regions into a single mask file then
+            # we'll need to reallocate the mask array for each mask region
+            if not combine_into_one:
+                # allocate memory for the region mask
+                region_mask = np.zeros((height, width, 3), dtype="uint8")
 
             # grab the shape and region attributes
             shape_attributes = region["shape_attributes"]
@@ -145,10 +157,20 @@ def masks_from_vgg(
             pts = pts.reshape((-1, 1, 2))
 
             # draw the polygon mask, using the class ID as the mask value
-            cv2.fillPoly(region_mask, [pts], color=[class_id]*3)
+            cv2.fillPoly(region_mask, [pts], color=[255]*3)
+            # cv2.fillPoly(region_mask, [pts], color=[class_id]*3)
 
+            # if not combining all masks into a single file
+            # then write this mask into its own file
+            if not combine_into_one:
+                # write the mask file
+                mask_file_name = f"{file_id}_segmentation_{i}.png"
+                cv2.imwrite(os.path.join(masks_dir, mask_file_name), region_mask)
+
+        # write a combined mask file, if requested
+        if combine_into_one:
             # write the mask file
-            mask_file_name = f"{file_id}_segmentation_{i}.png"
+            mask_file_name = f"{file_id}_segmentation.png"
             cv2.imwrite(os.path.join(masks_dir, mask_file_name), region_mask)
 
 
@@ -188,6 +210,12 @@ def main():
         type=str,
         help="path of the class labels file listing one class per line",
     )
+    args_parser.add_argument(
+        "--combine",
+        default=False,
+        action='store_true',
+        help="combine all regions/classes into a single mask file",
+    )
     args = vars(args_parser.parse_args())
 
     if args["format"] == "vgg":
@@ -196,6 +224,7 @@ def main():
             args["annotations"],
             args["masks"],
             args["classes"],
+            args["combine"],
         )
 
 
