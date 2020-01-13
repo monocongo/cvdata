@@ -230,6 +230,17 @@ $ cvdata_mask --images /data/images \
 >   --format vgg \
 >   --classes /data/class_labels.txt
 ```
+Masks will be written with the mask value corresponding to the class ID. For example, 
+if we have a class labels file with a single label, then the only class ID is 1 
+and so the masks will have a pixel value of (1, 1, 1) where pixels are masked.
+
+By default each mask described in the annotations file will result in a separate 
+mask file. So, for example, if the annotation for image file "abc.jpg" includes 
+two mask regions then the resulting mask files will be named "abc_0_segmentation.png" 
+and "abc_0_segmentation.png". However, if the `--combine` option is used then all 
+masks for an images will be included in a single mask file, so the single mask file 
+corresponding to image file named "abc.jpg" will be "abc_segmentation.png".
+
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py` or the corresponding script entry point `cvdata_visualize`. 
