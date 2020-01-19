@@ -60,7 +60,51 @@ def _class_labels_to_ids(
 
 
 # ------------------------------------------------------------------------------
-def masks_from_vgg(
+def vgg_to_tfrecords(
+        images_dir: str,
+        annotations_file: str,
+        tfrecord_dir: str,
+        class_labels_file: str,
+        num_shards: int = 1,
+):
+    """
+    TODO
+
+    :param images_dir: directory containing image files to be filtered
+    :param annotations_file : annotation file containing segmentation (mask)
+        regions, expected to be in the JSON format created by the VGG Annotator
+        tool
+    :param tfrecord_dir: directory where TFRecord files will be written
+    :param class_labels_file: text file containing one class label per line
+    :param num_shards: number of TFRecord shards to create/write
+    """
+
+    # arguments validation
+    if not os.path.exists(images_dir):
+        raise ValueError(f"Invalid images directory path: {images_dir}")
+    elif not os.path.exists(annotations_file):
+        raise ValueError(f"Invalid annotations file path: {annotations_file}")
+
+    # make the TFRecord(s) directory if it doesn't already exist
+    os.makedirs(tfrecord_dir, exist_ok=True)
+
+    # load the contents of the annotation JSON file (created
+    # using the VIA tool) and initialize the annotations dictionary
+    annotations = json.loads(open(annotations_file).read())
+    image_annotations = {}
+
+    # loop over the file ID and annotations themselves (values)
+    for data in annotations.values():
+
+        # store the data in the dictionary using the filename as the key
+        image_annotations[data["filename"]] = data
+
+    # get a dictionary of class labels to class IDs
+    class_labels = _class_labels_to_ids(class_labels_file)
+
+
+# ------------------------------------------------------------------------------
+def vgg_to_masks(
         images_dir: str,
         annotations_file: str,
         masks_dir: str,
@@ -189,10 +233,10 @@ def main():
         help="path to directory containing input image files",
     )
     args_parser.add_argument(
-        "--masks",
+        "--out_dir",
         required=True,
         type=str,
-        help="path to directory where mask files should be written",
+        help="path to directory where output files should be written",
     )
     args_parser.add_argument(
         "--annotations",
@@ -201,11 +245,18 @@ def main():
         help="path to annotation file",
     )
     args_parser.add_argument(
-        "--format",
+        "--in_format",
         required=False,
         type=str,
         choices=["vgg", "coco", "openimages"],
         help="format of input annotations",
+    )
+    args_parser.add_argument(
+        "--out_format",
+        required=False,
+        type=str,
+        choices=["png", "tfrecord"],
+        help="format of output annotations/masks",
     )
     args_parser.add_argument(
         "--classes",
@@ -219,16 +270,32 @@ def main():
         action='store_true',
         help="combine all regions/classes into a single mask file",
     )
+    args_parser.add_argument(
+        "--shards",
+        required=False,
+        default=1,
+        type=int,
+        help="number of shard files to use when converting to TFRecord format",
+    )
     args = vars(args_parser.parse_args())
 
-    if args["format"] == "vgg":
-        masks_from_vgg(
-            args["images"],
-            args["annotations"],
-            args["masks"],
-            args["classes"],
-            args["combine"],
-        )
+    if args["in_format"] == "vgg":
+        if args["out_format"] == "png":
+            vgg_to_masks(
+                args["images"],
+                args["annotations"],
+                args["out_dir"],
+                args["classes"],
+                args["combine"],
+            )
+        elif args["out_format"] == "tfrecord":
+            vgg_to_tfrecord(
+                args["images"],
+                args["annotations"],
+                args["out_dir"],
+                args["classes"],
+                args["shards"],
+            )
 
 
 # ------------------------------------------------------------------------------
