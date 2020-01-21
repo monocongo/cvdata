@@ -1,11 +1,16 @@
 import argparse
+import collections
 import json
 import logging
+import math
 import os
 from typing import Dict
 
 import cv2
 import numpy as np
+from PIL import Image
+import six
+import tensorflow as tf
 from tqdm import tqdm
 
 from cvdata.utils import image_dimensions
@@ -60,9 +65,49 @@ def _class_labels_to_ids(
 
 
 # ------------------------------------------------------------------------------
-def vgg_to_tfrecords(
+def _int64_list_feature(
+        values,
+) -> tf.train.Feature:
+    """
+    Returns a TF-Feature of int64_list.
+
+    :param values:
+    :return:
+    """
+    if not isinstance(values, collections.Iterable):
+        values = [values]
+
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
+
+
+# ------------------------------------------------------------------------------
+def _bytes_list_feature(
+        values: str,
+) -> tf.train.Feature:
+
+    """
+    Returns a TF-Feature of bytes.
+
+    :param values a string
+    :return TF-Feature of bytes
+    """
+
+    def norm2bytes(value):
+        return value.encode() if isinstance(value, str) and six.PY3 else value
+
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[norm2bytes(values)]))
+
+
+# ------------------------------------------------------------------------------
+def _int64_feature(value):
+    """Returns an int64_list from a bool / enum / int / uint."""
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+
+# ------------------------------------------------------------------------------
+def masks_to_tfrecords(
         images_dir: str,
-        annotations_file: str,
+        masks_dir: str,
         tfrecord_dir: str,
         class_labels_file: str,
         num_shards: int = 1,
@@ -70,10 +115,8 @@ def vgg_to_tfrecords(
     """
     TODO
 
-    :param images_dir: directory containing image files to be filtered
-    :param annotations_file : annotation file containing segmentation (mask)
-        regions, expected to be in the JSON format created by the VGG Annotator
-        tool
+    :param images_dir: directory containing JPG image files
+    :param masks_dir: directory containing PNG mask files
     :param tfrecord_dir: directory where TFRecord files will be written
     :param class_labels_file: text file containing one class label per line
     :param num_shards: number of TFRecord shards to create/write
@@ -82,25 +125,65 @@ def vgg_to_tfrecords(
     # arguments validation
     if not os.path.exists(images_dir):
         raise ValueError(f"Invalid images directory path: {images_dir}")
-    elif not os.path.exists(annotations_file):
-        raise ValueError(f"Invalid annotations file path: {annotations_file}")
+    elif not os.path.exists(masks_dir):
+        raise ValueError(f"Invalid masks directory path: {masks_dir}")
+
+    # TODO make this an argument
+    dataset = "tfrecord"
 
     # make the TFRecord(s) directory if it doesn't already exist
     os.makedirs(tfrecord_dir, exist_ok=True)
 
-    # load the contents of the annotation JSON file (created
-    # using the VIA tool) and initialize the annotations dictionary
-    annotations = json.loads(open(annotations_file).read())
-    image_annotations = {}
-
-    # loop over the file ID and annotations themselves (values)
-    for data in annotations.values():
-
-        # store the data in the dictionary using the filename as the key
-        image_annotations[data["filename"]] = data
-
     # get a dictionary of class labels to class IDs
     class_labels = _class_labels_to_ids(class_labels_file)
+
+    filenames = []
+    for file_name in os.listdir(images_dir):
+        if file_name.endswith(".jpg"):
+            filenames.append(file_name)
+
+    num_images = len(filenames)
+    num_per_shard = int(math.ceil(num_images / num_shards))
+
+    for shard_id in range(num_shards):
+        output_filename = os.path.join(
+            tfrecord_dir,
+            f'{dataset}-{shard_id:5d}-of-{num_shards:5d}.tfrecord',
+        )
+        with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+            start_idx = shard_id * num_per_shard
+            end_idx = min((shard_id + 1) * num_per_shard, num_images)
+            for i in range(start_idx, end_idx):
+                print(f'\r>> Converting image {i + 1}/{len(filenames)} shard {shard_id}')
+
+                # Read the image.
+                image = Image.open(os.path.join(images_dir, filenames[i]))
+                img_bytes = image.tobytes()
+                width, height = image.size
+
+                # Read the semantic segmentation annotation.
+                # TODO get the masks suffix from arguments
+                masks_suffix = "_segmentation.png"
+                mask_path = os.path.join(masks_dir, os.path.splitext(filenames[i])[0] + masks_suffix)
+                mask = cv2.imread(mask_path)
+                mask = cv2.split(mask)[0]
+                mask_bytes = mask.tobytes()
+                seg_height, seg_width = mask.shape
+                if height != seg_height or width != seg_width:
+                    raise RuntimeError('Shape mismatched between image and label.')
+
+                # Convert to tf example.
+                example = tf.train.Example(features=tf.train.Features(feature={
+                    'image/encoded': _bytes_list_feature(img_bytes),
+                    'image/filename': _bytes_list_feature(filenames[i]),
+                    'image/format': _bytes_list_feature('jpeg'),
+                    'image/height': _int64_list_feature(height),
+                    'image/width': _int64_list_feature(width),
+                    'image/channels': _int64_list_feature(3),
+                    'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
+                    'image/segmentation/class/format': _bytes_list_feature('png'),
+                }))
+                tfrecord_writer.write(example.SerializeToString())
 
 
 # ------------------------------------------------------------------------------
@@ -114,11 +197,11 @@ def vgg_to_masks(
     """
     TODO
 
-    :param images_dir: directory containing image files to be filtered
+    :param images_dir: directory containing JPG image files
     :param annotations_file : annotation file containing segmentation (mask)
         regions, expected to be in the JSON format created by the VGG Annotator
         tool
-    :param masks_dir: directory where mask files will be written
+    :param masks_dir: directory where PNG mask files will be written
     :param class_labels_file: text file containing one class label per line
     :param combine_into_one: if True then combine all mask regions for an image
         into a single mask file
@@ -233,10 +316,17 @@ def main():
         help="path to directory containing input image files",
     )
     args_parser.add_argument(
-        "--out_dir",
+        "--masks",
         required=True,
         type=str,
-        help="path to directory where output files should be written",
+        help="path to directory where mask files will be written "
+             "(or found if used as an input)",
+    )
+    args_parser.add_argument(
+        "--tfrecords",
+        required=False,
+        type=str,
+        help="path to directory where TFRecord output files will be written",
     )
     args_parser.add_argument(
         "--annotations",
@@ -284,18 +374,24 @@ def main():
             vgg_to_masks(
                 args["images"],
                 args["annotations"],
-                args["out_dir"],
+                args["masks"],
                 args["classes"],
                 args["combine"],
             )
-        elif args["out_format"] == "tfrecord":
-            vgg_to_tfrecord(
+    elif args["in_format"] == "png":
+        if args["out_format"] == "tfrecord":
+            masks_to_tfrecords(
                 args["images"],
-                args["annotations"],
-                args["out_dir"],
+                args["masks"],
+                args["tfrecords"],
                 args["classes"],
                 args["shards"],
             )
+        else:
+            raise ValueError(f"Unsupported output format: {args['out_format']}")
+
+    else:
+        raise ValueError(f"Unsupported input format: {args['in_format']}")
 
 
 # ------------------------------------------------------------------------------
