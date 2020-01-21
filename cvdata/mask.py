@@ -109,7 +109,6 @@ def masks_to_tfrecords(
         images_dir: str,
         masks_dir: str,
         tfrecord_dir: str,
-        class_labels_file: str,
         num_shards: int = 1,
 ):
     """
@@ -118,7 +117,6 @@ def masks_to_tfrecords(
     :param images_dir: directory containing JPG image files
     :param masks_dir: directory containing PNG mask files
     :param tfrecord_dir: directory where TFRecord files will be written
-    :param class_labels_file: text file containing one class label per line
     :param num_shards: number of TFRecord shards to create/write
     """
 
@@ -134,9 +132,6 @@ def masks_to_tfrecords(
     # make the TFRecord(s) directory if it doesn't already exist
     os.makedirs(tfrecord_dir, exist_ok=True)
 
-    # get a dictionary of class labels to class IDs
-    class_labels = _class_labels_to_ids(class_labels_file)
-
     filenames = []
     for file_name in os.listdir(images_dir):
         if file_name.endswith(".jpg"):
@@ -148,9 +143,9 @@ def masks_to_tfrecords(
     for shard_id in range(num_shards):
         output_filename = os.path.join(
             tfrecord_dir,
-            f'{dataset}-{shard_id:5d}-of-{num_shards:5d}.tfrecord',
+            f'{dataset}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
         )
-        with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+        with tf.compat.v1.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
             start_idx = shard_id * num_per_shard
             end_idx = min((shard_id + 1) * num_per_shard, num_images)
             for i in range(start_idx, end_idx):
@@ -317,7 +312,7 @@ def main():
     )
     args_parser.add_argument(
         "--masks",
-        required=True,
+        required=False,
         type=str,
         help="path to directory where mask files will be written "
              "(or found if used as an input)",
@@ -330,7 +325,7 @@ def main():
     )
     args_parser.add_argument(
         "--annotations",
-        required=True,
+        required=False,
         type=str,
         help="path to annotation file",
     )
@@ -338,7 +333,7 @@ def main():
         "--in_format",
         required=False,
         type=str,
-        choices=["vgg", "coco", "openimages"],
+        choices=["coco", "openimages", "png", "vgg"],
         help="format of input annotations",
     )
     args_parser.add_argument(
@@ -350,7 +345,7 @@ def main():
     )
     args_parser.add_argument(
         "--classes",
-        required=True,
+        required=False,
         type=str,
         help="path of the class labels file listing one class per line",
     )
@@ -384,7 +379,6 @@ def main():
                 args["images"],
                 args["masks"],
                 args["tfrecords"],
-                args["classes"],
                 args["shards"],
             )
         else:
