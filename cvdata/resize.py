@@ -24,11 +24,11 @@ _logger = logging.getLogger(__name__)
 
 
 # ------------------------------------------------------------------------------
-def _get_resized_image(
+def resize_with_padding(
         image: np.ndarray,
         new_width: int,
         new_height: int,
-) -> (np.ndarray, float, float):
+) -> (np.ndarray, int, int):
     """
     Reads image data from a file and resizes it to the specified dimensions,
     preserving the aspect ratio and padding on the right and bottom as necessary.
@@ -36,7 +36,7 @@ def _get_resized_image(
     :param image: numpy array of image (pixel) data
     :param new_width:
     :param new_height:
-    :return: resized image data and scale factors (width and height)
+    :return: resized image data and paddings (width and height)
     """
 
     # get the dimensions and aspect ratio
@@ -76,7 +76,30 @@ def _get_resized_image(
         borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0],
     )
 
+    return padded_img, pad_right, pad_bottom
+
+
+# ------------------------------------------------------------------------------
+def _get_resized_image(
+        image: np.ndarray,
+        new_width: int,
+        new_height: int,
+) -> (np.ndarray, float, float):
+    """
+    Reads image data from a file and resizes it to the specified dimensions,
+    preserving the aspect ratio and padding on the right and bottom as necessary.
+
+    :param image: numpy array of image (pixel) data
+    :param new_width:
+    :param new_height:
+    :return: resized image data and scale factors (width and height)
+    """
+
+    padded_img, pad_right, pad_bottom = \
+        resize_with_padding(image, new_width, new_height)
+
     # get the scaling factors that were used
+    original_height, original_width = image.shape[:2]
     scale_x = (new_width - pad_right) / original_width
     scale_y = (new_height - pad_bottom) / original_height
 
