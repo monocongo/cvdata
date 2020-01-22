@@ -11,9 +11,12 @@ import pandas as pd
 import tensorflow as tf
 
 from cvdata.common import FORMAT_CHOICES
+from cvdata.resize import resize_with_padding
 
-# enable eager execution for TensorFlow
-tf.enable_eager_execution()
+
+# enable TensorFlow eager execution (only required for versions before 2.0)
+if int(tf.__version__[0]) < 2:
+    tf.enable_eager_execution()
 
 # colors for annotation boxes/labels
 _RECTANGLE_BGR = (0, 255, 0)
@@ -159,6 +162,81 @@ def show_tfrecords_tfod(
             _logger.info(f"{image_count} Displaying {len(x_min)} boxes "
                          f"for {img_file_name}")
             cv2.imshow("Image", img)
+            cv2.waitKey(0)
+            image_count += 1
+
+    cv2.destroyAllWindows()
+
+
+# ------------------------------------------------------------------------------
+def show_tfrecords_segment(
+        tfrecords_dir: str,
+):
+    """
+    Displays images with bounding box annotations from all TFRecord files in a
+    directory containing TFRecord files and an associated images directory
+    containing the corresponding image files.
+
+    The TFRecord format is assumed to be the one used as input for TensorFlow
+    object detection models, described here:
+    https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/using_your_own_dataset.md
+
+    :param tfrecords_dir: directory containing TFRecord files
+    """
+
+    image_count = 0
+    for tfrecords_file_name in os.listdir(tfrecords_dir):
+
+        # parse each TFRecord file
+        tfrecords_file_path = os.path.join(tfrecords_dir, tfrecords_file_name)
+        tf_dataset = tf.data.TFRecordDataset(tfrecords_file_path)
+        for record in tf_dataset:
+
+            # example = tf.train.Example(features=tf.train.Features(feature={
+            #     'image/encoded': _bytes_list_feature(img_bytes),
+            #     'image/filename': _bytes_list_feature(args["filenames"][i]),
+            #     'image/format': _bytes_list_feature('jpeg'),
+            #     'image/height': _int64_list_feature(height),
+            #     'image/width': _int64_list_feature(width),
+            #     'image/channels': _int64_list_feature(3),
+            #     'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
+            #     'image/segmentation/class/format': _bytes_list_feature('png'),
+            # }))
+
+            example = tf.train.Example()
+            example.ParseFromString(record.numpy())
+            feature = example.features.feature
+            img_file_name = feature['image/filename'].bytes_list.value
+            width = feature['image/width'].int64_list.value[0]
+            height = feature['image/height'].int64_list.value[0]
+
+            # convert the image's bytes list back into an RGB array
+            img_bytes = feature['image/encoded'].bytes_list.value[0]
+            img_1d = np.fromstring(img_bytes, dtype=np.uint8)
+            img = np.reshape(img_1d, (height, width, 3))
+
+            # convert the mask's bytes list back into an RGB array
+            mask_bytes = feature['image/segmentation/class/encoded'].bytes_list.value[0]
+            mask_1d = np.fromstring(mask_bytes, dtype=np.uint8)
+            mask = np.reshape(mask_1d, (height, width))
+
+            # the mask is a single boolean channel, convert to 3 channels
+            rgb_mask = np.zeros((height, width, 3), dtype=np.uint8)
+            rgb_mask[:, :, 0] = mask
+
+            # set the masked values to a specific pixel value
+            rgb_mask[rgb_mask != 0] = 255
+
+            # overlay the mask onto the image
+            alpha = 0.2
+            cv2.addWeighted(rgb_mask, alpha, img, 1 - alpha, 0, img)
+
+            # resize image
+            display_width = 800
+            display_height = 600
+            image, _, _ = resize_with_padding(img, display_width, display_height)
+
+            cv2.imshow("Image", image)
             cv2.waitKey(0)
             image_count += 1
 
@@ -405,7 +483,7 @@ def main():
     )
     args_parser.add_argument(
         "--images",
-        required=True,
+        required=False,
         type=str,
         help="images directory path",
     )
@@ -464,7 +542,7 @@ def main():
 
     elif args["format"] == "tfrecord":
 
-        show_tfrecords_tfod(args["annotations"])
+        show_tfrecords_segment(args["annotations"])
 
     else:
 
