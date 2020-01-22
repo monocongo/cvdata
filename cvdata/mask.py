@@ -1,5 +1,6 @@
 import argparse
 import collections
+import concurrent.futures
 import json
 import logging
 import math
@@ -98,10 +99,62 @@ def _bytes_list_feature(
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[norm2bytes(values)]))
 
 
+# # ------------------------------------------------------------------------------
+# def _int64_feature(value):
+#     """Returns an int64_list from a bool / enum / int / uint."""
+#     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+
 # ------------------------------------------------------------------------------
-def _int64_feature(value):
-    """Returns an int64_list from a bool / enum / int / uint."""
-    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+def _build_write_tfrecord(
+    args: Dict,
+):
+    """
+
+    :param args: dictionary containing the following function arguments:
+         output_path: the path of the TFRecord file to be written
+         shard_id: shard ID (for multi-shard TFRecord datasets)
+         num_per_shard: number of images/masks per shard
+         num_images: total number of images in dataset
+         filenames: file names for image files
+         images_dir: directory containing image files
+         masks_dir: directory containing mask files corresponding to the images
+    """
+    with tf.compat.v1.python_io.TFRecordWriter(args["output_path"]) as tfrecord_writer:
+        start_idx = args["shard_id"] * args["num_per_shard"]
+        end_idx = min((args["shard_id"] + 1) * args["num_per_shard"], args["num_images"])
+        for i in range(start_idx, end_idx):
+            print(f'\r>> Converting image {i + 1}/{len(args["filenames"])} "'
+                  f'shard {args["shard_id"]}')
+
+            # Read the image.
+            image = Image.open(os.path.join(args["images_dir"], args["filenames"][i]))
+            img_bytes = image.tobytes()
+            width, height = image.size
+
+            # Read the semantic segmentation annotation.
+            # TODO get the masks suffix from arguments
+            masks_suffix = "_segmentation.png"
+            mask_path = os.path.join(args["masks_dir"], os.path.splitext(args["filenames"][i])[0] + masks_suffix)
+            mask = cv2.imread(mask_path)
+            mask = cv2.split(mask)[0]
+            mask_bytes = mask.tobytes()
+            seg_height, seg_width = mask.shape
+            if height != seg_height or width != seg_width:
+                raise RuntimeError('Shape mismatched between image and label.')
+
+            # Convert to tf example.
+            example = tf.train.Example(features=tf.train.Features(feature={
+                'image/encoded': _bytes_list_feature(img_bytes),
+                'image/filename': _bytes_list_feature(args["filenames"][i]),
+                'image/format': _bytes_list_feature('jpeg'),
+                'image/height': _int64_list_feature(height),
+                'image/width': _int64_list_feature(width),
+                'image/channels': _int64_list_feature(3),
+                'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
+                'image/segmentation/class/format': _bytes_list_feature('png'),
+            }))
+            tfrecord_writer.write(example.SerializeToString())
 
 
 # ------------------------------------------------------------------------------
@@ -140,45 +193,65 @@ def masks_to_tfrecords(
     num_images = len(filenames)
     num_per_shard = int(math.ceil(num_images / num_shards))
 
+    args_iterable = []
     for shard_id in range(num_shards):
         output_filename = os.path.join(
             tfrecord_dir,
             f'{dataset}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
         )
-        with tf.compat.v1.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-            start_idx = shard_id * num_per_shard
-            end_idx = min((shard_id + 1) * num_per_shard, num_images)
-            for i in range(start_idx, end_idx):
-                print(f'\r>> Converting image {i + 1}/{len(filenames)} shard {shard_id}')
+        tfrecord_writing_args = {
+            "output_path": output_filename,
+            "shard_id": shard_id,
+            "num_per_shard": num_per_shard,
+            "num_images": num_images,
+            "filenames": filenames,
+            "images_dir": images_dir,
+            "masks_dir": masks_dir,
+        }
+        args_iterable.append(tfrecord_writing_args)
 
-                # Read the image.
-                image = Image.open(os.path.join(images_dir, filenames[i]))
-                img_bytes = image.tobytes()
-                width, height = image.size
+    # use a ProcessPoolExecutor to download the images in parallel
+    with concurrent.futures.ProcessPoolExecutor() as executor:
 
-                # Read the semantic segmentation annotation.
-                # TODO get the masks suffix from arguments
-                masks_suffix = "_segmentation.png"
-                mask_path = os.path.join(masks_dir, os.path.splitext(filenames[i])[0] + masks_suffix)
-                mask = cv2.imread(mask_path)
-                mask = cv2.split(mask)[0]
-                mask_bytes = mask.tobytes()
-                seg_height, seg_width = mask.shape
-                if height != seg_height or width != seg_width:
-                    raise RuntimeError('Shape mismatched between image and label.')
+        # use the executor to map the download function to the iterable of arguments
+        _logger.info(f"Building TFRecords in directory {tfrecord_dir} ")
+        list(tqdm(executor.map(_build_write_tfrecord, args_iterable),
+                  total=len(args_iterable)))
 
-                # Convert to tf example.
-                example = tf.train.Example(features=tf.train.Features(feature={
-                    'image/encoded': _bytes_list_feature(img_bytes),
-                    'image/filename': _bytes_list_feature(filenames[i]),
-                    'image/format': _bytes_list_feature('jpeg'),
-                    'image/height': _int64_list_feature(height),
-                    'image/width': _int64_list_feature(width),
-                    'image/channels': _int64_list_feature(3),
-                    'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
-                    'image/segmentation/class/format': _bytes_list_feature('png'),
-                }))
-                tfrecord_writer.write(example.SerializeToString())
+        # with tf.compat.v1.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+        #     start_idx = shard_id * num_per_shard
+        #     end_idx = min((shard_id + 1) * num_per_shard, num_images)
+        #     for i in range(start_idx, end_idx):
+        #         print(f'\r>> Converting image {i + 1}/{len(filenames)} shard {shard_id}')
+        #
+        #         # Read the image.
+        #         image = Image.open(os.path.join(images_dir, filenames[i]))
+        #         img_bytes = image.tobytes()
+        #         width, height = image.size
+        #
+        #         # Read the semantic segmentation annotation.
+        #         # TODO get the masks suffix from arguments
+        #         masks_suffix = "_segmentation.png"
+        #         mask_path = os.path.join(masks_dir, os.path.splitext(filenames[i])[0] + masks_suffix)
+        #         mask = cv2.imread(mask_path)
+        #         mask = cv2.split(mask)[0]
+        #         mask_bytes = mask.tobytes()
+        #         seg_height, seg_width = mask.shape
+        #         if height != seg_height or width != seg_width:
+        #             raise RuntimeError('Shape mismatched between image and label.')
+        #
+        #         # Convert to tf example.
+        #         example = tf.train.Example(features=tf.train.Features(feature={
+        #             'image/encoded': _bytes_list_feature(img_bytes),
+        #             'image/filename': _bytes_list_feature(filenames[i]),
+        #             'image/format': _bytes_list_feature('jpeg'),
+        #             'image/height': _int64_list_feature(height),
+        #             'image/width': _int64_list_feature(width),
+        #             'image/channels': _int64_list_feature(3),
+        #             'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
+        #             'image/segmentation/class/format': _bytes_list_feature('png'),
+        #         }))
+        #         tfrecord_writer.write(example.SerializeToString())
 
 
 # ------------------------------------------------------------------------------
