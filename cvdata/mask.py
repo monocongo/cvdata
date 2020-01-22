@@ -1,11 +1,18 @@
 import argparse
+import collections
+import concurrent.futures
 import json
 import logging
+import math
 import os
 from typing import Dict
 
 import cv2
 import numpy as np
+from PIL import Image
+import six
+import tensorflow as tf
+from tensorflow.compat.v1.python_io import TFRecordWriter
 from tqdm import tqdm
 
 from cvdata.utils import image_dimensions
@@ -60,7 +67,156 @@ def _class_labels_to_ids(
 
 
 # ------------------------------------------------------------------------------
-def masks_from_vgg(
+def _int64_list_feature(
+        values,
+) -> tf.train.Feature:
+    """
+    Returns a TF-Feature of int64_list.
+
+    :param values:
+    :return:
+    """
+    if not isinstance(values, collections.Iterable):
+        values = [values]
+
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
+
+
+# ------------------------------------------------------------------------------
+def _bytes_list_feature(
+        values: str,
+) -> tf.train.Feature:
+
+    """
+    Returns a TF-Feature of bytes.
+
+    :param values a string
+    :return TF-Feature of bytes
+    """
+
+    def norm2bytes(value):
+        return value.encode() if isinstance(value, str) and six.PY3 else value
+
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[norm2bytes(values)]))
+
+
+# ------------------------------------------------------------------------------
+def _build_write_tfrecord(
+    args: Dict,
+):
+    """
+    Builds and writes a TFRecord with image and segmentation (mask) features.
+
+    :param args: dictionary containing the following function arguments:
+         output_path: the path of the TFRecord file to be written
+         shard_id: shard ID (for multi-shard TFRecord datasets)
+         num_per_shard: number of images/masks per shard
+         num_images: total number of images in dataset
+         filenames: file names for image files
+         images_dir: directory containing image files
+         masks_dir: directory containing mask files corresponding to the images
+    """
+    with TFRecordWriter(args["output_path"]) as tfrecord_writer:
+        start_idx = args["shard_id"] * args["num_per_shard"]
+        end_idx = min((args["shard_id"] + 1) * args["num_per_shard"], args["num_images"])
+        for i in range(start_idx, end_idx):
+            print(f'\r>> Converting image {i + 1}/{len(args["filenames"])} "'
+                  f'shard {args["shard_id"]}')
+
+            # Read the image.
+            image = Image.open(os.path.join(args["images_dir"], args["filenames"][i]))
+            img_bytes = image.tobytes()
+            width, height = image.size
+
+            # Read the semantic segmentation annotation.
+            # TODO get the masks suffix from arguments
+            masks_suffix = "_segmentation.png"
+            mask_path = os.path.join(args["masks_dir"], os.path.splitext(args["filenames"][i])[0] + masks_suffix)
+            mask = cv2.imread(mask_path)
+            mask = cv2.split(mask)[0]
+            mask_bytes = mask.tobytes()
+            seg_height, seg_width = mask.shape
+            if height != seg_height or width != seg_width:
+                raise RuntimeError('Shape mismatched between image and label.')
+
+            # Convert to tf example.
+            example = tf.train.Example(features=tf.train.Features(feature={
+                'image/encoded': _bytes_list_feature(img_bytes),
+                'image/filename': _bytes_list_feature(args["filenames"][i]),
+                'image/format': _bytes_list_feature('jpeg'),
+                'image/height': _int64_list_feature(height),
+                'image/width': _int64_list_feature(width),
+                'image/channels': _int64_list_feature(3),
+                'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
+                'image/segmentation/class/format': _bytes_list_feature('png'),
+            }))
+            tfrecord_writer.write(example.SerializeToString())
+
+
+# ------------------------------------------------------------------------------
+def masks_to_tfrecords(
+        images_dir: str,
+        masks_dir: str,
+        tfrecord_dir: str,
+        num_shards: int = 1,
+):
+    """
+    TODO
+
+    :param images_dir: directory containing JPG image files
+    :param masks_dir: directory containing PNG mask files
+    :param tfrecord_dir: directory where TFRecord files will be written
+    :param num_shards: number of TFRecord shards to create/write
+    """
+
+    # arguments validation
+    if not os.path.exists(images_dir):
+        raise ValueError(f"Invalid images directory path: {images_dir}")
+    elif not os.path.exists(masks_dir):
+        raise ValueError(f"Invalid masks directory path: {masks_dir}")
+
+    # TODO make this an argument
+    dataset = "tfrecord"
+
+    # make the TFRecord(s) directory if it doesn't already exist
+    os.makedirs(tfrecord_dir, exist_ok=True)
+
+    filenames = []
+    for file_name in os.listdir(images_dir):
+        if file_name.endswith(".jpg"):
+            filenames.append(file_name)
+
+    num_images = len(filenames)
+    num_per_shard = int(math.ceil(num_images / num_shards))
+
+    args_iterable = []
+    for shard_id in range(num_shards):
+        output_filename = os.path.join(
+            tfrecord_dir,
+            f'{dataset}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
+        )
+        tfrecord_writing_args = {
+            "output_path": output_filename,
+            "shard_id": shard_id,
+            "num_per_shard": num_per_shard,
+            "num_images": num_images,
+            "filenames": filenames,
+            "images_dir": images_dir,
+            "masks_dir": masks_dir,
+        }
+        args_iterable.append(tfrecord_writing_args)
+
+    # use a ProcessPoolExecutor to download the images in parallel
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+
+        # use the executor to map the download function to the iterable of arguments
+        _logger.info(f"Building TFRecords in directory {tfrecord_dir} ")
+        list(tqdm(executor.map(_build_write_tfrecord, args_iterable),
+                  total=len(args_iterable)))
+
+
+# ------------------------------------------------------------------------------
+def vgg_to_masks(
         images_dir: str,
         annotations_file: str,
         masks_dir: str,
@@ -70,11 +226,11 @@ def masks_from_vgg(
     """
     TODO
 
-    :param images_dir: directory containing image files to be filtered
+    :param images_dir: directory containing JPG image files
     :param annotations_file : annotation file containing segmentation (mask)
         regions, expected to be in the JSON format created by the VGG Annotator
         tool
-    :param masks_dir: directory where mask files will be written
+    :param masks_dir: directory where PNG mask files will be written
     :param class_labels_file: text file containing one class label per line
     :param combine_into_one: if True then combine all mask regions for an image
         into a single mask file
@@ -190,26 +346,40 @@ def main():
     )
     args_parser.add_argument(
         "--masks",
-        required=True,
+        required=False,
         type=str,
-        help="path to directory where mask files should be written",
+        help="path to directory where mask files will be written "
+             "(or found if used as an input)",
+    )
+    args_parser.add_argument(
+        "--tfrecords",
+        required=False,
+        type=str,
+        help="path to directory where TFRecord output files will be written",
     )
     args_parser.add_argument(
         "--annotations",
-        required=True,
+        required=False,
         type=str,
         help="path to annotation file",
     )
     args_parser.add_argument(
-        "--format",
+        "--in_format",
         required=False,
         type=str,
-        choices=["vgg", "coco", "openimages"],
+        choices=["coco", "openimages", "png", "vgg"],
         help="format of input annotations",
     )
     args_parser.add_argument(
+        "--out_format",
+        required=False,
+        type=str,
+        choices=["png", "tfrecord"],
+        help="format of output annotations/masks",
+    )
+    args_parser.add_argument(
         "--classes",
-        required=True,
+        required=False,
         type=str,
         help="path of the class labels file listing one class per line",
     )
@@ -219,16 +389,37 @@ def main():
         action='store_true',
         help="combine all regions/classes into a single mask file",
     )
+    args_parser.add_argument(
+        "--shards",
+        required=False,
+        default=1,
+        type=int,
+        help="number of shard files to use when converting to TFRecord format",
+    )
     args = vars(args_parser.parse_args())
 
-    if args["format"] == "vgg":
-        masks_from_vgg(
-            args["images"],
-            args["annotations"],
-            args["masks"],
-            args["classes"],
-            args["combine"],
-        )
+    if args["in_format"] == "vgg":
+        if args["out_format"] == "png":
+            vgg_to_masks(
+                args["images"],
+                args["annotations"],
+                args["masks"],
+                args["classes"],
+                args["combine"],
+            )
+    elif args["in_format"] == "png":
+        if args["out_format"] == "tfrecord":
+            masks_to_tfrecords(
+                args["images"],
+                args["masks"],
+                args["tfrecords"],
+                args["shards"],
+            )
+        else:
+            raise ValueError(f"Unsupported output format: {args['out_format']}")
+
+    else:
+        raise ValueError(f"Unsupported input format: {args['in_format']}")
 
 
 # ------------------------------------------------------------------------------
