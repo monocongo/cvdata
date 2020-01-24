@@ -15,7 +15,7 @@ import tensorflow as tf
 from tensorflow.compat.v1.python_io import TFRecordWriter
 from tqdm import tqdm
 
-from cvdata.utils import image_dimensions
+from cvdata.utils import image_dimensions, matching_ids
 
 
 # ------------------------------------------------------------------------------
@@ -151,6 +151,60 @@ def _build_write_tfrecord(
                 'image/segmentation/class/format': _bytes_list_feature('png'),
             }))
             tfrecord_writer.write(example.SerializeToString())
+
+
+# ------------------------------------------------------------------------------
+def masked_dataset_to_tfrecords(
+        images_dir: str,
+        masks_dir: str,
+        tfrecord_dir: str,
+        num_shards: int = 1,
+        dataset_base_name: str = "tfrecord",
+):
+    masks_ext = ".png"
+    images_ext = ".jpg"
+    file_ids = matching_ids(masks_dir, images_dir, masks_ext, images_ext)
+    num_images = len(file_ids)
+    num_per_shard = int(math.ceil(num_images / num_shards))
+
+    for shard_id in range(num_shards):
+        output_filename = os.path.join(
+            tfrecord_dir,
+            f'{dataset_base_name}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
+        )
+        with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
+            start_idx = shard_id * num_per_shard
+            end_idx = min((shard_id + 1) * num_per_shard, num_images)
+            for i in range(start_idx, end_idx):
+                print(f'\r>> Converting image {i + 1}/{len(file_ids)} shard {shard_id}')
+
+                # read the image
+                image_file_name = file_ids[i] + images_ext
+                image_path = os.path.join(images_dir, image_file_name)
+                image_data = tf.gfile.GFile(image_path, 'rb').read()
+                width, height, _ = image_dimensions(image_path)
+
+                # read the semantic segmentation annotation (mask)
+                mask_path = os.path.join(masks_dir, file_ids[i] + masks_ext)
+                seg_data = tf.gfile.GFile(mask_path, 'rb').read()
+                seg_width, seg_height, _ = image_dimensions(mask_path)
+                if height != seg_height or width != seg_width:
+                    raise RuntimeError('Shape mismatched between image and mask.')
+
+                # convert to a TensorFlow example
+                example = tf.train.Example(features=tf.train.Features(feature={
+                    'image/encoded': _bytes_list_feature(image_data),
+                    'image/filename': _bytes_list_feature(image_file_name),
+                    'image/format': _bytes_list_feature('jpeg'),
+                    'image/height': _int64_list_feature(height),
+                    'image/width': _int64_list_feature(width),
+                    'image/channels': _int64_list_feature(3),
+                    'image/segmentation/class/encoded': (_bytes_list_feature(seg_data)),
+                    'image/segmentation/class/format': _bytes_list_feature('png'),
+                }))
+
+                # write the example into the TFRecord (shard) file
+                tfrecord_writer.write(example.SerializeToString())
 
 
 # ------------------------------------------------------------------------------
@@ -409,7 +463,7 @@ def main():
             )
     elif args["in_format"] == "png":
         if args["out_format"] == "tfrecord":
-            masks_to_tfrecords(
+            masked_dataset_to_tfrecords(
                 args["images"],
                 args["masks"],
                 args["tfrecords"],
