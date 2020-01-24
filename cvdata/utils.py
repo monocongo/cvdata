@@ -17,7 +17,10 @@ def image_dimensions(
 
     image = Image.open(image_file_path)
     img_width, img_height = image.size
-    img_depth = image.layers
+    if image_file_path.lower().endswith("png"):
+        img_depth = 1
+    else:
+        img_depth = image.layers
     return img_width, img_height, img_depth
 
 
