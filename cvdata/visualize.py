@@ -169,36 +169,13 @@ def show_tfrecords_tfod(
 
 
 # ------------------------------------------------------------------------------
-def _decode_tfrecord(serialized_example):
-
-    features = tf.parse_single_example(
-        serialized_example,
-        # Defaults are not specified since both keys are required.
-        features={
-            'image/height': tf.FixedLenFeature([1],tf.int64),
-            'image/width': tf.FixedLenFeature([1],tf.int64),
-            'image/encoded': tf.FixedLenFeature([], tf.string),
-            'image/segmentation/class/encoded': tf.FixedLenFeature([], tf.string),
-        })
-
-    height = tf.cast(features['image/height'], tf.int64)
-    width = tf.cast(features['image/width'], tf.int64)
-    shape = (height, width, 1)
-    image = tf.decode_raw(features['image/encoded'], tf.uint8)
-    image = tf.reshape(image, shape)
-    mask = tf.decode_raw(features['image/segmentation/class/encoded'], tf.uint8)
-    mask = tf.reshape(mask, shape)
-
-    return image, mask
-
-
-# ------------------------------------------------------------------------------
 def show_tfrecords_segmentation(
         tfrecords_dir: str,
 ):
     """
     Displays images with segmentation masks from all TFRecord files found in a
-    directory containing TFRecord files.
+    directory containing TFRecord files in the format of those used for
+    TensorFlow's DeepLab v3.
 
     The TFRecord format is assumed to contain the following feature attributes:
 
@@ -223,8 +200,6 @@ def show_tfrecords_segmentation(
         for record in tf_dataset:
 
             example = tf.train.Example()
-            # img, mask = _decode_tfrecord(example)
-
             example.ParseFromString(record.numpy())
             feature = example.features.feature
             width = feature['image/width'].int64_list.value[0]
