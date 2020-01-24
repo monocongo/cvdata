@@ -10,7 +10,6 @@ from typing import Dict
 
 import cv2
 import numpy as np
-from PIL import Image
 import six
 import tensorflow as tf
 from tensorflow.compat.v1.python_io import TFRecordWriter
@@ -164,12 +163,11 @@ def masked_dataset_to_tfrecords(
     Creates TFRecord files corresponding to a dataset of JPG images with
     corresponding set PNG masks.
 
-    :param images_dir:
-    :param masks_dir:
-    :param tfrecord_dir:
-    :param num_shards:
-    :param dataset_base_name:
-    :return:
+    :param images_dir: directory containing image files
+    :param masks_dir: directory containing mask files corresponding to the images
+    :param tfrecord_dir: directory where the output TFRecord files will be written
+    :param num_shards: number of shards
+    :param dataset_base_name: base name of the TFRecord files to be produced
     """
 
     masks_ext = ".png"
@@ -214,12 +212,13 @@ def vgg_to_masks(
         combine_into_one: bool = False,
 ):
     """
-    TODO
+    Creates mask files from annotations specified in a JSON file exported from
+    the VGG Image Annotator (VIA) tool.
 
     :param images_dir: directory containing JPG image files
     :param annotations_file : annotation file containing segmentation (mask)
-        regions, expected to be in the JSON format created by the VGG Annotator
-        tool
+        regions, expected to be in the JSON format created by the VGG Image
+        Annotator tool
     :param masks_dir: directory where PNG mask files will be written
     :param class_labels_file: text file containing one class label per line
     :param combine_into_one: if True then combine all mask regions for an image
@@ -415,11 +414,22 @@ def main():
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     """
-    Usage: 
-    $ python mask.py --format vgg \
+    Usage:
+    For creating masks from VIA annotations:
+     
+    $ python mask.py --in_format vgg \
         --images /data/images \
         --annotations /data/via_annotations.json \
         --masks /data/masks
+        
+    For creating TFRecords from a masked dataset:    
+    
+    $ python mask.py --images /data/lesions/images \
+        --masks /data/lesions/masks \
+        --in_format png --out_format tfrecord \
+        --tfrecords /data/lesions/tfrecords \
+        --shards 12
     """
 
+    # run this module's main function
     main()
