@@ -5,17 +5,17 @@ import json
 import logging
 import math
 import os
+import random
 from typing import Dict
 
 import cv2
 import numpy as np
-from PIL import Image
 import six
 import tensorflow as tf
 from tensorflow.compat.v1.python_io import TFRecordWriter
 from tqdm import tqdm
 
-from cvdata.utils import image_dimensions
+from cvdata.utils import image_dimensions, matching_ids
 
 
 # ------------------------------------------------------------------------------
@@ -112,95 +112,84 @@ def _build_write_tfrecord(
          shard_id: shard ID (for multi-shard TFRecord datasets)
          num_per_shard: number of images/masks per shard
          num_images: total number of images in dataset
-         filenames: file names for image files
+         file_ids: file IDs for image/mask files
          images_dir: directory containing image files
          masks_dir: directory containing mask files corresponding to the images
     """
+
     with TFRecordWriter(args["output_path"]) as tfrecord_writer:
         start_idx = args["shard_id"] * args["num_per_shard"]
         end_idx = min((args["shard_id"] + 1) * args["num_per_shard"], args["num_images"])
         for i in range(start_idx, end_idx):
-            print(f'\r>> Converting image {i + 1}/{len(args["filenames"])} "'
+            print(f'\r>> Converting image {i + 1}/{len(args["file_ids"])} "'
                   f'shard {args["shard_id"]}')
 
-            # Read the image.
-            image = Image.open(os.path.join(args["images_dir"], args["filenames"][i]))
-            img_bytes = image.tobytes()
-            width, height = image.size
+            # read the image
+            image_file_name = args["file_ids"][i] + ".jpg"
+            image_path = os.path.join(args["images_dir"], image_file_name)
+            image_data = tf.gfile.GFile(image_path, 'rb').read()
+            width, height, _ = image_dimensions(image_path)
 
-            # Read the semantic segmentation annotation.
-            # TODO get the masks suffix from arguments
-            masks_suffix = "_segmentation.png"
-            mask_path = os.path.join(args["masks_dir"], os.path.splitext(args["filenames"][i])[0] + masks_suffix)
-            mask = cv2.imread(mask_path)
-            mask = cv2.split(mask)[0]
-            mask_bytes = mask.tobytes()
-            seg_height, seg_width = mask.shape
+            # read the semantic segmentation annotation (mask)
+            mask_path = os.path.join(args["masks_dir"], args["file_ids"][i] + ".png")
+            seg_data = tf.gfile.GFile(mask_path, 'rb').read()
+            seg_width, seg_height, _ = image_dimensions(mask_path)
             if height != seg_height or width != seg_width:
-                raise RuntimeError('Shape mismatched between image and label.')
+                raise RuntimeError('Shape mismatched between image and mask.')
 
             # Convert to tf example.
             example = tf.train.Example(features=tf.train.Features(feature={
-                'image/encoded': _bytes_list_feature(img_bytes),
-                'image/filename': _bytes_list_feature(args["filenames"][i]),
+                'image/encoded': _bytes_list_feature(image_data),
+                'image/filename': _bytes_list_feature(image_file_name),
                 'image/format': _bytes_list_feature('jpeg'),
                 'image/height': _int64_list_feature(height),
                 'image/width': _int64_list_feature(width),
                 'image/channels': _int64_list_feature(3),
-                'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
+                'image/segmentation/class/encoded': (_bytes_list_feature(seg_data)),
                 'image/segmentation/class/format': _bytes_list_feature('png'),
             }))
             tfrecord_writer.write(example.SerializeToString())
 
 
 # ------------------------------------------------------------------------------
-def masks_to_tfrecords(
+def masked_dataset_to_tfrecords(
         images_dir: str,
         masks_dir: str,
         tfrecord_dir: str,
         num_shards: int = 1,
+        dataset_base_name: str = "tfrecord",
 ):
     """
-    TODO
+    Creates TFRecord files corresponding to a dataset of JPG images with
+    corresponding set PNG masks.
 
-    :param images_dir: directory containing JPG image files
-    :param masks_dir: directory containing PNG mask files
-    :param tfrecord_dir: directory where TFRecord files will be written
-    :param num_shards: number of TFRecord shards to create/write
+    :param images_dir: directory containing image files
+    :param masks_dir: directory containing mask files corresponding to the images
+    :param tfrecord_dir: directory where the output TFRecord files will be written
+    :param num_shards: number of shards
+    :param dataset_base_name: base name of the TFRecord files to be produced
     """
 
-    # arguments validation
-    if not os.path.exists(images_dir):
-        raise ValueError(f"Invalid images directory path: {images_dir}")
-    elif not os.path.exists(masks_dir):
-        raise ValueError(f"Invalid masks directory path: {masks_dir}")
-
-    # TODO make this an argument
-    dataset = "tfrecord"
-
-    # make the TFRecord(s) directory if it doesn't already exist
-    os.makedirs(tfrecord_dir, exist_ok=True)
-
-    filenames = []
-    for file_name in os.listdir(images_dir):
-        if file_name.endswith(".jpg"):
-            filenames.append(file_name)
-
-    num_images = len(filenames)
+    masks_ext = ".png"
+    images_ext = ".jpg"
+    file_ids = list(matching_ids(masks_dir, images_dir, masks_ext, images_ext))
+    random.shuffle(file_ids)
+    num_images = len(file_ids)
     num_per_shard = int(math.ceil(num_images / num_shards))
 
     args_iterable = []
     for shard_id in range(num_shards):
         output_filename = os.path.join(
             tfrecord_dir,
-            f'{dataset}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
+            f'{dataset_base_name}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
         )
+
         tfrecord_writing_args = {
             "output_path": output_filename,
             "shard_id": shard_id,
             "num_per_shard": num_per_shard,
             "num_images": num_images,
-            "filenames": filenames,
+            "file_ids": file_ids,
             "images_dir": images_dir,
             "masks_dir": masks_dir,
         }
@@ -211,8 +200,7 @@ def masks_to_tfrecords(
 
         # use the executor to map the download function to the iterable of arguments
         _logger.info(f"Building TFRecords in directory {tfrecord_dir} ")
-        list(tqdm(executor.map(_build_write_tfrecord, args_iterable),
-                  total=len(args_iterable)))
+        executor.map(_build_write_tfrecord, args_iterable)
 
 
 # ------------------------------------------------------------------------------
@@ -224,12 +212,13 @@ def vgg_to_masks(
         combine_into_one: bool = False,
 ):
     """
-    TODO
+    Creates mask files from annotations specified in a JSON file exported from
+    the VGG Image Annotator (VIA) tool.
 
     :param images_dir: directory containing JPG image files
     :param annotations_file : annotation file containing segmentation (mask)
-        regions, expected to be in the JSON format created by the VGG Annotator
-        tool
+        regions, expected to be in the JSON format created by the VGG Image
+        Annotator tool
     :param masks_dir: directory where PNG mask files will be written
     :param class_labels_file: text file containing one class label per line
     :param combine_into_one: if True then combine all mask regions for an image
@@ -409,7 +398,7 @@ def main():
             )
     elif args["in_format"] == "png":
         if args["out_format"] == "tfrecord":
-            masks_to_tfrecords(
+            masked_dataset_to_tfrecords(
                 args["images"],
                 args["masks"],
                 args["tfrecords"],
@@ -425,11 +414,22 @@ def main():
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     """
-    Usage: 
-    $ python mask.py --format vgg \
+    Usage:
+    For creating masks from VIA annotations:
+     
+    $ python mask.py --in_format vgg \
         --images /data/images \
         --annotations /data/via_annotations.json \
         --masks /data/masks
+        
+    For creating TFRecords from a masked dataset:    
+    
+    $ python mask.py --images /data/lesions/images \
+        --masks /data/lesions/masks \
+        --in_format png --out_format tfrecord \
+        --tfrecords /data/lesions/tfrecords \
+        --shards 12
     """
 
+    # run this module's main function
     main()

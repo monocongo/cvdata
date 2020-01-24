@@ -169,17 +169,24 @@ def show_tfrecords_tfod(
 
 
 # ------------------------------------------------------------------------------
-def show_tfrecords_segment(
+def show_tfrecords_segmentation(
         tfrecords_dir: str,
 ):
     """
-    Displays images with bounding box annotations from all TFRecord files in a
-    directory containing TFRecord files and an associated images directory
-    containing the corresponding image files.
+    Displays images with segmentation masks from all TFRecord files found in a
+    directory containing TFRecord files in the format of those used for
+    TensorFlow's DeepLab v3.
 
-    The TFRecord format is assumed to be the one used as input for TensorFlow
-    object detection models, described here:
-    https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/using_your_own_dataset.md
+    The TFRecord format is assumed to contain the following feature attributes:
+
+        'image/encoded': encoded JPG data for the base image
+        'image/filename': original file name for the base image
+        'image/format': 'jpeg'
+        'image/height': height, in pixels, of both the base and mask images
+        'image/width': width, in pixels, of both the base and mask images
+        'image/channels': 3 (since the JPG is RGB data)
+        'image/segmentation/class/encoded': encoded PNG data for the mask image
+        'image/segmentation/class/format': 'png'
 
     :param tfrecords_dir: directory containing TFRecord files
     """
@@ -192,43 +199,34 @@ def show_tfrecords_segment(
         tf_dataset = tf.data.TFRecordDataset(tfrecords_file_path)
         for record in tf_dataset:
 
-            # example = tf.train.Example(features=tf.train.Features(feature={
-            #     'image/encoded': _bytes_list_feature(img_bytes),
-            #     'image/filename': _bytes_list_feature(args["filenames"][i]),
-            #     'image/format': _bytes_list_feature('jpeg'),
-            #     'image/height': _int64_list_feature(height),
-            #     'image/width': _int64_list_feature(width),
-            #     'image/channels': _int64_list_feature(3),
-            #     'image/segmentation/class/encoded': (_bytes_list_feature(mask_bytes)),
-            #     'image/segmentation/class/format': _bytes_list_feature('png'),
-            # }))
-
             example = tf.train.Example()
             example.ParseFromString(record.numpy())
             feature = example.features.feature
-            img_file_name = feature['image/filename'].bytes_list.value
             width = feature['image/width'].int64_list.value[0]
             height = feature['image/height'].int64_list.value[0]
 
-            # convert the image's bytes list back into an RGB array
-            img_bytes = feature['image/encoded'].bytes_list.value[0]
-            img_1d = np.fromstring(img_bytes, dtype=np.uint8)
-            img = np.reshape(img_1d, (height, width, 3))
-
-            # convert the mask's bytes list back into an RGB array
-            mask_bytes = feature['image/segmentation/class/encoded'].bytes_list.value[0]
-            mask_1d = np.fromstring(mask_bytes, dtype=np.uint8)
-            mask = np.reshape(mask_1d, (height, width))
-
-            # the mask is a single boolean channel, convert to 3 channels
-            rgb_mask = np.zeros((height, width, 3), dtype=np.uint8)
-            rgb_mask[:, :, 0] = mask
+            raw_img = feature['image/encoded'].bytes_list.value[0]
+            img = tf.image.decode_jpeg(raw_img).numpy()
+            raw_mask = feature['image/segmentation/class/encoded'].bytes_list.value[0]
+            mask = tf.image.decode_png(raw_mask).numpy()
 
             # set the masked values to a specific pixel value
-            rgb_mask[rgb_mask != 0] = 255
+            mask[mask != 0] = 255
+
+            # if the mask only has a single channel then convert to 3 channels
+            if mask.shape[2] == 1:
+                rgb_mask = np.zeros((height, width, 3), dtype=np.uint8)
+                squeezed_mask = np.squeeze(mask, axis=2)
+                for i in range(3):
+                    rgb_mask[:, :, i] = squeezed_mask
+            else:
+                rgb_mask = mask
+
+            # images are in BGR, convert to RGB
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
             # overlay the mask onto the image
-            alpha = 0.2
+            alpha = 0.4
             cv2.addWeighted(rgb_mask, alpha, img, 1 - alpha, 0, img)
 
             # resize image
@@ -542,7 +540,8 @@ def main():
 
     elif args["format"] == "tfrecord":
 
-        show_tfrecords_segment(args["annotations"])
+        # use the display function for TFRecords with segmentation (masks)
+        show_tfrecords_segmentation(args["annotations"])
 
     else:
 
