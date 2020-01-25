@@ -241,6 +241,17 @@ and "abc_0_segmentation.png". However, if the `--combine` option is used then al
 masks for an images will be included in a single mask file, so the single mask file 
 corresponding to image file named "abc.jpg" will be "abc_segmentation.png".
 
+We can also use the `cvdata_mask` script entry point to create TFRecord files 
+from an input dataset of JPG images and corresponding PNG masks. For this scenario 
+we expect the mask files to have the same base file name as the images files, and 
+for the image and mask files to be present in their own separate directories. For 
+example:
+```bash
+$ cvdata_mask --images /data/images --masks /data/masks \
+>       --in_format png --out_format tfrecord \
+>       --tfrecords /data/tfrecords \
+>       --shards 4 -- train_pct 0.8
+```
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py` or the corresponding script entry point `cvdata_visualize`. 

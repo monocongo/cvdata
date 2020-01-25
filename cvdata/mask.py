@@ -158,6 +158,7 @@ def masked_dataset_to_tfrecords(
         tfrecord_dir: str,
         num_shards: int = 1,
         dataset_base_name: str = "tfrecord",
+        train_pct: float = 1.0,
 ):
     """
     Creates TFRecord files corresponding to a dataset of JPG images with
@@ -168,37 +169,57 @@ def masked_dataset_to_tfrecords(
     :param tfrecord_dir: directory where the output TFRecord files will be written
     :param num_shards: number of shards
     :param dataset_base_name: base name of the TFRecord files to be produced
+    :param train_pct: the percentage of images/masks to use for training, with
+        (1.0 minus this value as the validation percentage), if this value is 1.0
+        then no split will occur
     """
 
     masks_ext = ".png"
     images_ext = ".jpg"
     file_ids = list(matching_ids(masks_dir, images_dir, masks_ext, images_ext))
     random.shuffle(file_ids)
-    num_images = len(file_ids)
-    num_per_shard = int(math.ceil(num_images / num_shards))
 
-    args_iterable = []
-    for shard_id in range(num_shards):
-        output_filename = os.path.join(
-            tfrecord_dir,
-            f'{dataset_base_name}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
-        )
-
-        tfrecord_writing_args = {
-            "output_path": output_filename,
-            "shard_id": shard_id,
-            "num_per_shard": num_per_shard,
-            "num_images": num_images,
-            "file_ids": file_ids,
-            "images_dir": images_dir,
-            "masks_dir": masks_dir,
+    # create a mapping of base file names and subsets of file IDs
+    if train_pct < 1.0:
+        split_index = int(len(file_ids) * train_pct)
+        split_names_to_ids = {
+            "train_" + dataset_base_name: file_ids[:split_index],
+            "valid_" + dataset_base_name: file_ids[split_index:],
         }
-        args_iterable.append(tfrecord_writing_args)
+    else:
+        # we'll just have one base file name mapped to all file IDs
+        split_names_to_ids = {
+            dataset_base_name: file_ids,
+        }
 
-    # use a ProcessPoolExecutor to download the images in parallel
+    # create an iterable of arguments that will be mapped to concurrent future processes
+    args_iterable = []
+    for base_name, file_ids in split_names_to_ids.items():
+
+        num_images = len(file_ids)
+        num_per_shard = int(math.ceil(num_images / num_shards))
+
+        for shard_id in range(num_shards):
+            output_filename = os.path.join(
+                tfrecord_dir,
+                f'{base_name}-{str(shard_id).zfill(5)}-of-{str(num_shards).zfill(5)}.tfrecord',
+            )
+
+            tfrecord_writing_args = {
+                "output_path": output_filename,
+                "shard_id": shard_id,
+                "num_per_shard": num_per_shard,
+                "num_images": num_images,
+                "file_ids": file_ids,
+                "images_dir": images_dir,
+                "masks_dir": masks_dir,
+            }
+            args_iterable.append(tfrecord_writing_args)
+
+    # use a ProcessPoolExecutor to facilitate creating the TFRecords in parallel
     with concurrent.futures.ProcessPoolExecutor() as executor:
 
-        # use the executor to map the download function to the iterable of arguments
+        # map the TFRecord creation function to the iterable of arguments
         _logger.info(f"Building TFRecords in directory {tfrecord_dir} ")
         executor.map(_build_write_tfrecord, args_iterable)
 
@@ -385,6 +406,22 @@ def main():
         type=int,
         help="number of shard files to use when converting to TFRecord format",
     )
+    args_parser.add_argument(
+        "--train_pct",
+        required=False,
+        default=1.0,
+        type=float,
+        help="percentage of images/masks to use for the training subset "
+             "(validation subset will equal 1.0 - train_pct), if 1.0 then "
+             "no splitting will occur",
+    )
+    args_parser.add_argument(
+        "--base_name",
+        required=False,
+        type=str,
+        default="tfrecord",
+        help="base name of the TFRecord files",
+    )
     args = vars(args_parser.parse_args())
 
     if args["in_format"] == "vgg":
@@ -403,6 +440,8 @@ def main():
                 args["masks"],
                 args["tfrecords"],
                 args["shards"],
+                args["base_name"],
+                args["train_pct"],
             )
         else:
             raise ValueError(f"Unsupported output format: {args['out_format']}")
@@ -422,13 +461,13 @@ if __name__ == "__main__":
         --annotations /data/via_annotations.json \
         --masks /data/masks
         
-    For creating TFRecords from a masked dataset:    
+    For creating TFRecords from a masked dataset with an 80% training and 20% validation split:    
     
     $ python mask.py --images /data/lesions/images \
         --masks /data/lesions/masks \
         --in_format png --out_format tfrecord \
         --tfrecords /data/lesions/tfrecords \
-        --shards 12
+        --shards 12 -- train_pct 0.8
     """
 
     # run this module's main function
