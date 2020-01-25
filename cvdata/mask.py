@@ -461,13 +461,13 @@ if __name__ == "__main__":
         --annotations /data/via_annotations.json \
         --masks /data/masks
         
-    For creating TFRecords from a masked dataset:    
+    For creating TFRecords from a masked dataset with an 80% training and 20% validation split:    
     
     $ python mask.py --images /data/lesions/images \
         --masks /data/lesions/masks \
         --in_format png --out_format tfrecord \
         --tfrecords /data/lesions/tfrecords \
-        --shards 12
+        --shards 12 -- train_pct 0.8
     """
 
     # run this module's main function
