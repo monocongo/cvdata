@@ -213,17 +213,17 @@ def _generate_label_map(
 
 # ------------------------------------------------------------------------------
 def _open_sharded_output_tfrecords(
-        exit_stack,
-        base_path,
-        num_shards,
-):
+        exit_stack: contextlib2.ExitStack,
+        base_path: str,
+        num_shards: int,
+) -> List:
     """
     Opens all TFRecord shards for writing and adds them to an exit stack.
 
     Modified from original code in the TensorFlow Object Detection API:
     https://github.com/tensorflow/models/object-detection/research/object_detection/dataset_tools/tf_record_creation_util.py
 
-    :param exit_stack: a context2.ExitStack used to automatically close the
+    :param exit_stack: a contextlib2.ExitStack used to automatically close the
         TFRecords opened in this function
     :param base_path: the base file path for all shards
     :param num_shards: number of shards
@@ -231,7 +231,7 @@ def _open_sharded_output_tfrecords(
         corresponds to shard k)
     """
     tf_record_output_filenames = [
-        '{}-{:05d}-of-{:05d}'.format(base_path, idx, num_shards)
+        f'{base_path}-{str(idx).zfill(5)}-of-{str(num_shards).zfill(5)}'
         for idx in range(num_shards)
     ]
 
