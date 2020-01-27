@@ -13,6 +13,7 @@ import cv2
 import pandas as pd
 from PIL import Image
 import tensorflow as tf
+from tensorflow.compat.v1.python_io import TFRecordWriter
 from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
@@ -275,7 +276,7 @@ def _open_sharded_output_tfrecords(
     ]
 
     tfrecords = [
-      exit_stack.enter_context(tf.python_io.TFRecordWriter(file_name))
+      exit_stack.enter_context(TFRecordWriter(file_name))
       for file_name in tf_record_output_filenames
     ]
 
