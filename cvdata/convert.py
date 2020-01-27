@@ -11,7 +11,6 @@ from xml.etree import ElementTree
 import contextlib2
 import cv2
 from object_detection.utils import dataset_util
-from object_detection.dataset_tools import tf_record_creation_util
 import pandas as pd
 from PIL import Image
 import tensorflow as tf
@@ -213,6 +212,38 @@ def _generate_label_map(
 
 
 # ------------------------------------------------------------------------------
+def _open_sharded_output_tfrecords(
+        exit_stack,
+        base_path,
+        num_shards,
+):
+    """
+    Opens all TFRecord shards for writing and adds them to an exit stack.
+
+    Modified from original code in the TensorFlow Object Detection API:
+    https://github.com/tensorflow/models/object-detection/research/object_detection/dataset_tools/tf_record_creation_util.py
+
+    :param exit_stack: a context2.ExitStack used to automatically close the
+        TFRecords opened in this function
+    :param base_path: the base file path for all shards
+    :param num_shards: number of shards
+    :return: a list of opened TFRecord shard files (position k in the list
+        corresponds to shard k)
+    """
+    tf_record_output_filenames = [
+        '{}-{:05d}-of-{:05d}'.format(base_path, idx, num_shards)
+        for idx in range(num_shards)
+    ]
+
+    tfrecords = [
+      exit_stack.enter_context(tf.python_io.TFRecordWriter(file_name))
+      for file_name in tf_record_output_filenames
+    ]
+
+    return tfrecords
+
+
+# ------------------------------------------------------------------------------
 def _to_tfrecord(
         images_dir: str,
         annotations_dir: str,
@@ -257,7 +288,7 @@ def _to_tfrecord(
     # write the TFRecords into the specified number of "shard" files
     with contextlib2.ExitStack() as tf_record_close_stack:
         output_tfrecords = \
-            tf_record_creation_util.open_sharded_output_tfrecords(
+            _open_sharded_output_tfrecords(
                 tf_record_close_stack,
                 tfrecord_path,
                 total_shards,
