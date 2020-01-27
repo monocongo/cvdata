@@ -10,11 +10,10 @@ from xml.etree import ElementTree
 
 import contextlib2
 import cv2
-from object_detection.utils import dataset_util
-from object_detection.dataset_tools import tf_record_creation_util
 import pandas as pd
 from PIL import Image
 import tensorflow as tf
+from tensorflow.compat.v1.python_io import TFRecordWriter
 from tqdm import tqdm
 
 from cvdata.common import FORMAT_CHOICES
@@ -120,6 +119,46 @@ def _dataset_bbox_examples(
 
 
 # ------------------------------------------------------------------------------
+def _int64_feature(
+        value: int,
+) -> tf.train.Feature:
+
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
+
+
+# ------------------------------------------------------------------------------
+def _int64_list_feature(
+        value: List[int],
+) -> tf.train.Feature:
+
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
+
+
+# ------------------------------------------------------------------------------
+def _bytes_feature(
+        value: str,
+) -> tf.train.Feature:
+
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+
+# ------------------------------------------------------------------------------
+def _bytes_list_feature(
+        value: List[str],
+) -> tf.train.Feature:
+
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+
+
+# ------------------------------------------------------------------------------
+def _float_list_feature(
+        value: List[float],
+) -> tf.train.Feature:
+
+    return tf.train.Feature(float_list=tf.train.FloatList(value=value))
+
+
+# ------------------------------------------------------------------------------
 def _create_tf_example(
         label_indices: Dict,
         group: NamedTuple,
@@ -163,18 +202,18 @@ def _create_tf_example(
 
     # build the Example from the lists of coordinates, class labels/indices, etc.
     tf_example = tf.train.Example(features=tf.train.Features(feature={
-        'image/height': dataset_util.int64_feature(height),
-        'image/width': dataset_util.int64_feature(width),
-        'image/filename': dataset_util.bytes_feature(filename),
-        'image/source_id': dataset_util.bytes_feature(filename),
-        'image/encoded': dataset_util.bytes_feature(img_bytes),
-        'image/format': dataset_util.bytes_feature(image_format),
-        'image/object/bbox/xmin': dataset_util.float_list_feature(xmins),
-        'image/object/bbox/xmax': dataset_util.float_list_feature(xmaxs),
-        'image/object/bbox/ymin': dataset_util.float_list_feature(ymins),
-        'image/object/bbox/ymax': dataset_util.float_list_feature(ymaxs),
-        'image/object/class/text': dataset_util.bytes_list_feature(classes_text),
-        'image/object/class/label': dataset_util.int64_list_feature(classes),
+        'image/height': _int64_feature(height),
+        'image/width': _int64_feature(width),
+        'image/filename': _bytes_feature(filename),
+        'image/source_id': _bytes_feature(filename),
+        'image/encoded': _bytes_feature(img_bytes),
+        'image/format': _bytes_feature(image_format),
+        'image/object/bbox/xmin': _float_list_feature(xmins),
+        'image/object/bbox/xmax': _float_list_feature(xmaxs),
+        'image/object/bbox/ymin': _float_list_feature(ymins),
+        'image/object/bbox/ymax': _float_list_feature(ymaxs),
+        'image/object/class/text': _bytes_list_feature(classes_text),
+        'image/object/class/label': _int64_list_feature(classes),
     }))
 
     return tf_example
@@ -210,6 +249,38 @@ def _generate_label_map(
             label_indices[label] = label_index
 
     return label_indices
+
+
+# ------------------------------------------------------------------------------
+def _open_sharded_output_tfrecords(
+        exit_stack: contextlib2.ExitStack,
+        base_path: str,
+        num_shards: int,
+) -> List:
+    """
+    Opens all TFRecord shards for writing and adds them to an exit stack.
+
+    Modified from original code in the TensorFlow Object Detection API:
+    https://github.com/tensorflow/models/object-detection/research/object_detection/dataset_tools/tf_record_creation_util.py
+
+    :param exit_stack: a contextlib2.ExitStack used to automatically close the
+        TFRecords opened in this function
+    :param base_path: the base file path for all shards
+    :param num_shards: number of shards
+    :return: a list of opened TFRecord shard files (position k in the list
+        corresponds to shard k)
+    """
+    tf_record_output_filenames = [
+        f'{base_path}-{str(idx).zfill(5)}-of-{str(num_shards).zfill(5)}'
+        for idx in range(num_shards)
+    ]
+
+    tfrecords = [
+      exit_stack.enter_context(TFRecordWriter(file_name))
+      for file_name in tf_record_output_filenames
+    ]
+
+    return tfrecords
 
 
 # ------------------------------------------------------------------------------
@@ -257,7 +328,7 @@ def _to_tfrecord(
     # write the TFRecords into the specified number of "shard" files
     with contextlib2.ExitStack() as tf_record_close_stack:
         output_tfrecords = \
-            tf_record_creation_util.open_sharded_output_tfrecords(
+            _open_sharded_output_tfrecords(
                 tf_record_close_stack,
                 tfrecord_path,
                 total_shards,

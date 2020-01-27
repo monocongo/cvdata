@@ -181,16 +181,41 @@ def masked_dataset_to_tfrecords(
 
     # create a mapping of base file names and subsets of file IDs
     if train_pct < 1.0:
+        # get the correct file name prefix for the TFRecord files
+        # based on the presence of a specified file base name
+        tfrecord_file_prefix_train = "train"
+        tfrecord_file_prefix_valid = "valid"
+        if dataset_base_name != "":
+            tfrecord_file_prefix_train = tfrecord_file_prefix_train + "_" + dataset_base_name
+            tfrecord_file_prefix_valid = tfrecord_file_prefix_valid + "_" + dataset_base_name
+
+        # get the split index to use for splitting into train/valid sets
         split_index = int(len(file_ids) * train_pct)
+
+        # map the file prefixes to the sets of file IDs for the split sections
         split_names_to_ids = {
-            "train_" + dataset_base_name: file_ids[:split_index],
-            "valid_" + dataset_base_name: file_ids[split_index:],
+            tfrecord_file_prefix_train: file_ids[:split_index],
+            tfrecord_file_prefix_valid: file_ids[split_index:],
         }
+
+        # report the number of samples in each split section
+        _logger.info(f"TFRecord dataset contains {len(file_ids[:split_index])} training samples")
+        _logger.info(f"TFRecord dataset contains {len(file_ids[split_index:])} validation samples")
+
     else:
         # we'll just have one base file name mapped to all file IDs
+        if "" == dataset_base_name:
+            tfrecord_file_prefix = "tfrecord"
+        else:
+            tfrecord_file_prefix = dataset_base_name
+
+        # map the file prefixes to the set of file IDs
         split_names_to_ids = {
-            dataset_base_name: file_ids,
+            tfrecord_file_prefix: file_ids,
         }
+
+        # report the number of samples
+        _logger.info(f"TFRecord dataset contains {len(file_ids)} samples (no train/valid split)")
 
     # create an iterable of arguments that will be mapped to concurrent future processes
     args_iterable = []
@@ -419,7 +444,7 @@ def main():
         "--base_name",
         required=False,
         type=str,
-        default="tfrecord",
+        default="",
         help="base name of the TFRecord files",
     )
     args = vars(args_parser.parse_args())
