@@ -1,12 +1,12 @@
 import os
-import setuptools
+from setuptools import setup, find_packages
 
 parent_dir = os.path.dirname(os.path.realpath(__file__))
 
 with open(f"{parent_dir}/README.md", "r") as readme_file:
     long_description = readme_file.read()
 
-setuptools.setup(
+setup(
     name="cvdata",
     version="0.0.6",
     author="James Adams",
@@ -15,17 +15,18 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
-    python_requires="==3.7.*",
-    packages=[
-        "cvdata",
-    ],
+    python_requires=">=3.6,<3.8",
     provides=[
         "cvdata",
     ],
     classifiers=[
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Operating System :: OS Independent",
     ],
+    package_dir={'': 'src'},
+    packages=find_packages(where='src'),
     install_requires=[
         "boto3",
         "contextlib2",
