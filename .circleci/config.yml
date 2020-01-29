@@ -5,31 +5,29 @@
 version: 2
 jobs:
 
-  # using tox
-  toxify:
+    # using tox
+    toxify:
 
-      docker:
-        - image: python:3.7
+        docker:
+            - image: circleci/python:3.7
 
-      steps:
+        steps:
+            - checkout
+            # download and cache dependencies
+            - restore_cache:
+                keys:
+                    - v1-dependencies-{{ checksum "requirements.txt" }}
+                    # fallback to using the latest cache if no exact match is found
+                    - v1-dependencies-
 
-        - checkout
-
-        # Download and cache dependencies
-        - restore_cache:
-            keys:
-              - v1-dependencies-{{ checksum "requirements.txt" }}
-              # fallback to using the latest cache if no exact match is found
-              - v1-dependencies-
-
-        - run: pip install tox && tox
+            - run: pip install tox && tox
 
 workflows:
-  version: 2
+    version: 2
 
-  myproj:
-    jobs:
-      - toxify
+    cvdata:
+        jobs:
+        - toxify
 
 #jobs:
 #  build:
