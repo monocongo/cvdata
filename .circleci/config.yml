@@ -9,7 +9,7 @@ jobs:
       # specify the version you desire here
       # CircleCI maintains a library of pre-built images
       # documented at https://circleci.com/docs/2.0/circleci-images/
-      - image: circleci/python:3.7
+      - image: circleci/python:3
 
     working_directory: ~/repo
 
@@ -26,9 +26,8 @@ jobs:
       - run:
           name: install dependencies
           command: |
-#            python3 -m venv venv
-#            . venv/bin/activate
-            conda activate
+            python3 -m venv venv
+            . venv/bin/activate
             pip install -e .
             pip install tox
 
