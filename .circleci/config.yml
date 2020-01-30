@@ -58,6 +58,8 @@ jobs:
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install -e .
+                    pip install codecov
+                    pip install coverage
                     pip install tox
 
             - save_cache:
@@ -71,6 +73,7 @@ jobs:
                 command: |
                     . venv/bin/activate
                     tox
+                    coverage run tests
 
             # store artifacts (for example logs, binaries, etc)
             # to be available in the web app or through the API
