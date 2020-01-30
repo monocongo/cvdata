@@ -72,6 +72,10 @@ jobs:
                     . venv/bin/activate
                     tox
 
+            # store artifacts (for example logs, binaries, etc)
+            # to be available in the web app or through the API
             - store_artifacts:
                 path: test-reports
-                destination: test-reports
+
+            - store_test_results:
+                path: test-results
