@@ -69,8 +69,8 @@ jobs:
             - run:
                 name: run tests
                 command: |
-                . venv/bin/activate
-                tox
+                    . venv/bin/activate
+                    tox
 
             - store_artifacts:
                 path: test-reports
