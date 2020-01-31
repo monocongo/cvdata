@@ -34,12 +34,13 @@
 # ------ NON-WORKFLOW VERSION ------
 jobs:
     build:
-        docker:
-            # specify the version you desire here
-            # CircleCI maintains a library of pre-built images
-            # documented at https://circleci.com/docs/2.0/circleci-images/
-            - image: circleci/python:3-stretch
-            #            - image: circleci/python:3.7
+        machine:
+            - image: ubuntu-1604:201903-01
+#        docker:
+#            # specify the version you desire here
+#            # CircleCI maintains a library of pre-built images
+#            # documented at https://circleci.com/docs/2.0/circleci-images/
+#            - image: circleci/python:3.7
 
         working_directory: ~/repo
 
