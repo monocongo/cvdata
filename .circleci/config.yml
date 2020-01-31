@@ -2,36 +2,6 @@
 #
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 #
-
-# ------ WORKFLOW VERSION ------
-#version: 2
-#jobs:
-#
-#    # using tox
-#    toxify:
-#
-#        docker:
-#            - image: circleci/python:3.7
-#
-#        steps:
-#            - checkout
-#            # download and cache dependencies
-#            - restore_cache:
-#                keys:
-#                    - v1-dependencies-{{ checksum "requirements.txt" }}
-#                    # fallback to using the latest cache if no exact match is found
-#                    - v1-dependencies-
-#
-#            - run: pip install tox && tox
-#
-#workflows:
-#    version: 2
-#
-#    cvdata:
-#        jobs:
-#        - toxify
-
-# ------ NON-WORKFLOW VERSION ------
 jobs:
     build:
         docker:
@@ -73,12 +43,8 @@ jobs:
                 command: |
                     . venv/bin/activate
                     tox
-#                    coverage run tests
 
             # store artifacts (for example logs, binaries, etc)
             # to be available in the web app or through the API
             - store_artifacts:
                 path: test-reports
-
-#            - store_test_results:
-#                path: test-results
