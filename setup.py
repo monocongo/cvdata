@@ -15,12 +15,13 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/monocongo/cvdata",
-    python_requires=">=3.7",
+    python_requires=">=3.6,<3.8",
     provides=[
         "cvdata",
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Operating System :: OS Independent",
     ],
