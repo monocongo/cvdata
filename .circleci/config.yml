@@ -43,7 +43,7 @@ jobs:
       # store artifacts (for example logs, binaries, etc)
       # to be available in the web app or through the API
       - store_artifacts:
-        path: test-reports
+          path: test-reports
 
   test-3.6:
     <<: *test-template
