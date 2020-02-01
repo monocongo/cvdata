@@ -22,6 +22,11 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -e .
+            pip install codecov
+            pip install coverage
+            pip install opencv-python
+            pip install pytest
+            pip install scikit-image
 
       - save_cache:
           paths:
@@ -32,11 +37,6 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            pip install codecov
-            pip install coverage
-            pip install opencv-python
-            pip install pytest
-            pip install scikit-image
             coverage run -m pytest tests
             codecov
 
