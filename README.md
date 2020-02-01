@@ -1,3 +1,7 @@
+[![CircleCI](https://circleci.com/gh/monocongo/cvdata.svg?style=svg)](https://circleci.com/gh/monocongo/cvdata)
+[![codecov](https://codecov.io/gh/monocongo/cvdata/branch/master/graph/badge.svg)](https://codecov.io/gh/monocongo/cvdata)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 # cvdata
 Tools for creating and manipulating computer vision datasets
 
@@ -18,16 +22,14 @@ $ pip install cvdata
 $ pip install -e git+https://github.com/tensorflow/models.git#egg=object_detection\&subdirectory=research
 ```
 
-##### From Source
+##### From source
 This package can be installed into the active Python environment as source from 
-its git repository. We'll first clone/download from GitHub, install the dependencies 
-specified in `requirements.txt`, and finally install the package into the active 
-Python environment:
+its git repository. We'll first clone/download from GitHub and then install the 
+package into the active Python environment:
 ```bash
 $ git clone git@github.com:monocongo/cvdata.git
 $ cd cvdata
-$ pip install -r requirements.txt
-$ python setup.py install
+$ pip install -e .
 ```
 
 ## OpenImages
@@ -261,6 +263,14 @@ and labels for all images/annotations in the specified images and annotations
 directories. For example:
 ```bash
 $ cvdata_visualize --format pascal --images_dir /data/weapons/images --annotations_dir /data/weapons/pascal
+```
+
+### For developers
+##### Testing
+Tests are based on `pytest` and are launched in stand-alone virtual environments 
+via [tox](https://tox.readthedocs.io/en/latest/): 
+```bash
+$ tox
 ```
 
 ## Citation
