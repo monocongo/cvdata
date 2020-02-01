@@ -31,7 +31,9 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest  # tox
       run: |
+        pip install opencv-python
         pip install pytest
+        pip install scikit-image
         pytest
         # pip install tox
         # tox
