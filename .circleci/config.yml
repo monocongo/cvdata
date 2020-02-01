@@ -3,7 +3,7 @@
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 #
 jobs:
-    build:
+    build_3.7:
         docker:
             # specify the version you desire here
             # CircleCI maintains a library of pre-built images
@@ -28,9 +28,6 @@ jobs:
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install -e .
-                    pip install codecov
-                    pip install coverage
-                    pip install tox
 
             - save_cache:
                 paths:
@@ -42,7 +39,14 @@ jobs:
                 name: run tests
                 command: |
                     . venv/bin/activate
-                    tox
+                    pip install codecov
+                    pip install coverage
+                    pip install opencv-python
+                    pip install pytest
+                    pip install scikit-image
+                    coverage run -m pytest tests
+                    codecov
+#                    tox
 
             # store artifacts (for example logs, binaries, etc)
             # to be available in the web app or through the API
