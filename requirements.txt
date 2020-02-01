@@ -9,7 +9,6 @@ cachetools==4.0.0
 certifi==2019.11.28
 chardet==3.0.4
 contextlib2==0.6.0
--e git+https://github.com/monocongo/cvdata@cb95eefbe926ee0bfdcff244e110c01134d33d5a#egg=cvdata
 cycler==0.10.0
 Cython==0.29.13
 decorator==4.4.0
@@ -85,10 +84,10 @@ s3transfer==0.3.2
 scipy==1.4.1
 Send2Trash==1.5.0
 six==1.12.0
-tensorboard==2.1.0
-tensorflow==2.1.0
-tensorflow-cpu==1.15.0rc2
-tensorflow-estimator==2.1.0
+tensorboard==2.0.0
+tensorflow==2.0.0
+tensorflow-cpu==2.1.0rc0
+tensorflow-estimator==2.0.0
 termcolor==1.1.0
 terminado==0.8.2
 testpath==0.4.2
