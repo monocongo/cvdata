@@ -1,6 +1,7 @@
 [![CircleCI](https://circleci.com/gh/monocongo/cvdata.svg?style=svg)](https://circleci.com/gh/monocongo/cvdata)
 [![codecov](https://codecov.io/gh/monocongo/cvdata/branch/master/graph/badge.svg)](https://codecov.io/gh/monocongo/cvdata)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 # cvdata
 Tools for creating and manipulating computer vision datasets
 
