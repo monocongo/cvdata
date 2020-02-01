@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/monocongo/cvdata.svg?style=svg)](https://circleci.com/gh/monocongo/cvdata)
+[![codecov](https://codecov.io/gh/monocongo/cvdata/branch/master/graph/badge.svg)](https://codecov.io/gh/monocongo/cvdata)
 # cvdata
 Tools for creating and manipulating computer vision datasets
 
@@ -259,6 +261,14 @@ and labels for all images/annotations in the specified images and annotations
 directories. For example:
 ```bash
 $ cvdata_visualize --format pascal --images_dir /data/weapons/images --annotations_dir /data/weapons/pascal
+```
+
+### For developers
+##### Testing
+Tests are based on `pytest` and are launched in stand-alone virtual environments 
+via [tox](https://tox.readthedocs.io/en/latest/): 
+```bash
+$ tox
 ```
 
 ## Citation
