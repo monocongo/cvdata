@@ -18,16 +18,14 @@ $ pip install cvdata
 $ pip install -e git+https://github.com/tensorflow/models.git#egg=object_detection\&subdirectory=research
 ```
 
-##### From Source
+##### From source
 This package can be installed into the active Python environment as source from 
-its git repository. We'll first clone/download from GitHub, install the dependencies 
-specified in `requirements.txt`, and finally install the package into the active 
-Python environment:
+its git repository. We'll first clone/download from GitHub and then install the 
+package into the active Python environment:
 ```bash
 $ git clone git@github.com:monocongo/cvdata.git
 $ cd cvdata
-$ pip install -r requirements.txt
-$ python setup.py install
+$ pip install -e .
 ```
 
 ## OpenImages
