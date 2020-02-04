@@ -1,7 +1,7 @@
 [![CircleCI](https://circleci.com/gh/monocongo/cvdata.svg?style=svg)](https://circleci.com/gh/monocongo/cvdata)
 [![codecov](https://codecov.io/gh/monocongo/cvdata/branch/master/graph/badge.svg)](https://codecov.io/gh/monocongo/cvdata)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cvdata)
 # cvdata
 Tools for creating and manipulating computer vision datasets
 
@@ -10,8 +10,8 @@ Tools for creating and manipulating computer vision datasets
 This package can be installed into the active Python environment, making the `cvdata` 
 module available for import within other Python codes and available for utilization 
 at the command line as illustrated in the usage examples below. This package 
-is currently supported for Python version 3.7, and the installation methods below 
-assume that the package will be installed into a Python 3.7 virtual environment.
+is currently supported for Python versions 3.6 and 3.7, and the installation methods below 
+assume that the package will be installed into a Python 3.6 or 3.7 virtual environment.
 
 ##### From PyPI
 This package can be installed into the active Python environment from PyPI via 
