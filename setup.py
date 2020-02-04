@@ -36,7 +36,7 @@ setup(
         "pandas",
         "pillow",
         "requests",
-        "tensorflow",
+        "tensorflow-cpu>=2.1",
         "tqdm",
     ],
     entry_points={
