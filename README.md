@@ -213,6 +213,23 @@ $ cvdata_filter --format darknet \
     --boxes_per_class car:6000 truck:6000
 ```
 
+## Relabel annotations
+The module/script `cvdata/relabel.py` or the corresponding script entry point `cvdata_relabel` 
+can be used to filter the number of image/annotation files of a dataset. For example, 
+to relabel all PASCAL annotation files in a directory from "dog" to "beagle":
+```bash
+$ cvdata_relabel --labels_dir /data/cvdata/pascal \
+  --old dog --new beagle --format pascal
+```
+Since Darknet (YOLO) annotation files use index values that correspond to entries 
+in a class labels file we would use integer values for the `--old` and `--new` 
+arguments:
+```bash
+$ cvdata_relabel --labels_dir /data/cvdata/darknet \
+  --old 1 --new 4 --format darknet
+```
+This function currently supports `darknet`, `kitti`, and `pascal` formats.
+
 ## Remove duplicates
 The module/script `cvdata/duplicates.py`  or the corresponding script entry point 
 `cvdata_duplicates` can be used to remove duplicate images from a directory. This 
