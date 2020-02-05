@@ -204,8 +204,11 @@ supports limiting the number of bounding boxes per class type. The filtered data
 will contain annotation files with bounding boxes only for the class labels specified 
 and limited to the number of boxes specified for each class label. For example: 
 ```bash
-$ cvdata_filter --src_annotations /data/darknet --dest_annotations /data/filtered_darknet \
-    --src_images /data/images --dest_images /data/filtered_images \
+$ cvdata_filter --format darknet \
+    --src_annotations /data/darknet \ 
+    --dest_annotations /data/filtered_darknet \
+    --src_images /data/images \
+    --dest_images /data/filtered_images \
     --darknet_labels /data/darknet/labels.txt \
     --boxes_per_class car:6000 truck:6000
 ```

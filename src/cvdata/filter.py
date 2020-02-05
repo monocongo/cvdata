@@ -25,11 +25,23 @@ def _darknet_indices_to_labels(
         darknet_labels_path: str,
 ) -> Dict:
     """
-    TODO
+    Parses a Darknet (YOLO) annotation labels file into a dictionary. The labels
+    file is expected to contain a single class label per line, and the resulting
+    dictionary will contain integer keys beginning at 0, so the first class label
+    will be the value for key 0, the second class label will be the value for key
+    1, etc. For example, the labels file with the following lines:
+
+    dog
+    cat
+    panda
+
+    will result in the following indices to labels dictionary:
+
+    { 0: "dog", 1: "cat", 2: "panda" }
 
     :param darknet_labels_path: path to the file containing labels used in
         the Darknet dataset, should correspond to the labels used in the Darknet
-        annotation file
+        annotation files of the dataset
     :return: dictionary mapping index values to corresponding labels text
     """
 
@@ -37,9 +49,10 @@ def _darknet_indices_to_labels(
     with open(darknet_labels_path, "r") as darknet_labels_file:
         index = 0
         for line in darknet_labels_file:
-            darknet_label = line.split()[0]
-            index_labels[index] = darknet_label
-            index += 1
+            if len(line.strip()) > 0:
+                darknet_label = line.split()[0]
+                index_labels[index] = darknet_label
+                index += 1
 
     return index_labels
 
