@@ -29,7 +29,7 @@ def _darknet_indices_to_labels(
 
     :param darknet_labels_path: path to the file containing labels used in
         the Darknet dataset, should correspond to the labels used in the Darknet
-        annotation file
+        annotation files of the dataset
     :return: dictionary mapping index values to corresponding labels text
     """
 
@@ -37,9 +37,10 @@ def _darknet_indices_to_labels(
     with open(darknet_labels_path, "r") as darknet_labels_file:
         index = 0
         for line in darknet_labels_file:
-            darknet_label = line.split()[0]
-            index_labels[index] = darknet_label
-            index += 1
+            if len(line.strip()) > 0:
+                darknet_label = line.split()[0]
+                index_labels[index] = darknet_label
+                index += 1
 
     return index_labels
 
