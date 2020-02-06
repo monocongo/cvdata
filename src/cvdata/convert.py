@@ -11,7 +11,8 @@ from xml.etree import ElementTree
 import contextlib2
 import cv2
 import pandas as pd
-from PIL import Image
+# from PIL import Image
+import six
 import tensorflow as tf
 from tensorflow.compat.v1.python_io import TFRecordWriter
 from tqdm import tqdm
@@ -196,6 +197,23 @@ def _bytes_feature(
 
 # ------------------------------------------------------------------------------
 def _bytes_list_feature(
+        values: str,
+) -> tf.train.Feature:
+    """
+    Returns a TF-Feature of bytes.
+
+    :param values a string
+    :return TF-Feature of bytes
+    """
+
+    def norm2bytes(value):
+        return value.encode() if isinstance(value, str) and six.PY3 else value
+
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[norm2bytes(values)]))
+
+
+# ------------------------------------------------------------------------------
+def _string_bytes_list_feature(
         value: List[str],
 ) -> tf.train.Feature:
 
@@ -226,14 +244,14 @@ def _create_tf_example(
     :return: TensorFlow Example object corresponding to the group of annotations
     """
 
-    # read the image into a bytes object, get the dimensions
-    image = Image.open(os.path.join(images_dir, group.filename))
-    img_bytes = image.tobytes()
-    width, height = image.size
+    # read the image
+    image_file_name = group.filename
+    image_path = os.path.join(images_dir, group.filename)
+    image_data = tf.io.gfile.GFile(image_path, 'rb').read()
+    width, height, _ = image_dimensions(image_path)
 
     # lists of bounding box values for the example
     filename = group.filename.encode('utf8')
-    image_format = b'jpg'
     xmins = []
     xmaxs = []
     ymins = []
@@ -256,15 +274,15 @@ def _create_tf_example(
     tf_example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': _int64_feature(height),
         'image/width': _int64_feature(width),
-        'image/filename': _bytes_feature(filename),
         'image/source_id': _bytes_feature(filename),
-        'image/encoded': _bytes_feature(img_bytes),
-        'image/format': _bytes_feature(image_format),
+        'image/encoded': _bytes_list_feature(image_data),
+        'image/filename': _bytes_list_feature(image_file_name),
+        'image/format': _bytes_list_feature('jpeg'),
         'image/object/bbox/xmin': _float_list_feature(xmins),
         'image/object/bbox/xmax': _float_list_feature(xmaxs),
         'image/object/bbox/ymin': _float_list_feature(ymins),
         'image/object/bbox/ymax': _float_list_feature(ymaxs),
-        'image/object/class/text': _bytes_list_feature(classes_text),
+        'image/object/class/text': _string_bytes_list_feature(classes_text),
         'image/object/class/label': _int64_list_feature(classes),
     }))
 
