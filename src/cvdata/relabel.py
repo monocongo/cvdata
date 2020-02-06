@@ -133,7 +133,7 @@ def _relabel_darknet(arguments: Dict):
          "new": new label index value
     """
 
-    relabel_darknet(arguments["file_path"], arguments["old"], arguments["new"])
+    relabel_darknet(arguments["file_path"], int(arguments["old"]), int(arguments["new"]))
 
 
 # ------------------------------------------------------------------------------

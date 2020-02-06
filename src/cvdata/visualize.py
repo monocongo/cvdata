@@ -133,10 +133,10 @@ def show_tfrecords_tfod(
             width = feature['image/width'].int64_list.value[0]
             height = feature['image/height'].int64_list.value[0]
 
-            # convert the image's bytes list back into an RGB array
-            img_bytes = feature['image/encoded'].bytes_list.value[0]
-            img_1d = np.fromstring(img_bytes, dtype=np.uint8)
-            img = np.reshape(img_1d, (height, width, 3))
+            raw_img = feature['image/encoded'].bytes_list.value[0]
+            img = tf.image.decode_jpeg(raw_img).numpy()
+            # images are in BGR, convert to RGB
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
             # for each bounding box draw the rectangle and label text
             i = 0
@@ -541,7 +541,8 @@ def main():
     elif args["format"] == "tfrecord":
 
         # use the display function for TFRecords with segmentation (masks)
-        show_tfrecords_segmentation(args["annotations"])
+        show_tfrecords_tfod(args["annotations"])
+        # show_tfrecords_segmentation(args["annotations"])
 
     else:
 
