@@ -118,14 +118,18 @@ def _dataset_bbox_examples(
         # read class labels into index/label dictionary
         darknet_index_labels = darknet_indices_to_labels(darknet_labels)
 
-        # get the file IDs for all matching image/PASCAL pairs (i.e. the dataset)
+        # get the file IDs for all matching image/Darknet pairs (i.e. the dataset)
         annotation_ext = ".txt"
-        for file_id in matching_ids(
+        file_ids = matching_ids(
                 annotations_dir,
                 images_dir,
                 annotation_ext,
                 image_ext,
-        ):
+        )
+
+        # get the bounding boxes from the annotation files
+        _logger.info("Extracting bounding box info from Darknet annotations...")
+        for file_id in tqdm(file_ids):
             # get the image dimensions from the image file since this
             # info is not present in the corresponding KITTI annotation
             image_file_name = file_id + image_ext
