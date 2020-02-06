@@ -127,12 +127,12 @@ def _build_write_tfrecord(
             # read the image
             image_file_name = args["file_ids"][i] + ".jpg"
             image_path = os.path.join(args["images_dir"], image_file_name)
-            image_data = tf.gfile.GFile(image_path, 'rb').read()
+            image_data = tf.io.gfile.GFile(image_path, 'rb').read()
             width, height, _ = image_dimensions(image_path)
 
             # read the semantic segmentation annotation (mask)
             mask_path = os.path.join(args["masks_dir"], args["file_ids"][i] + ".png")
-            seg_data = tf.gfile.GFile(mask_path, 'rb').read()
+            seg_data = tf.io.gfile.GFile(mask_path, 'rb').read()
             seg_width, seg_height, _ = image_dimensions(mask_path)
             if height != seg_height or width != seg_width:
                 raise RuntimeError('Shape mismatched between image and mask.')
