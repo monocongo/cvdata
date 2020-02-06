@@ -137,15 +137,15 @@ def _dataset_bbox_examples(
             with open(darknet_path, "r") as darknet_file:
                 for line in darknet_file:
                     darknet_box = line.split()
-                    label_index = darknet_box[0]
+                    label_index = int(darknet_box[0])
                     # only use annotations corresponding to the specified labels
                     if label_index not in darknet_index_labels:
                         # skip this annotation line
                         continue
-                    center_x = darknet_box[1] * width
-                    center_y = darknet_box[2] * height
-                    box_width = darknet_box[3] * width
-                    box_height = darknet_box[4] * height
+                    center_x = float(darknet_box[1]) * width
+                    center_y = float(darknet_box[2]) * height
+                    box_width = float(darknet_box[3]) * width
+                    box_height = float(darknet_box[4]) * height
                     bbox_values = (
                         image_file_name,
                         width,
