@@ -255,6 +255,30 @@ $ cvdata_mask --images /data/images --masks /data/masks \
 >       --tfrecords /data/tfrecords \
 >       --shards 4 -- train_pct 0.8
 ```
+## Dataset statistics
+Basic statistics about a dataset are available via the script `cvdata/analyze.py` 
+or the corresponding script entry point `cvdata_analyze`.
+
+For example, we can count the number of examples in a collection of TFRecord files 
+(specify a directory containing only TFRecod files):
+```bash
+$ cvdata_analyze --format tfrecord --annotations /data/animals/tfrecord
+Total number of examples: 100
+```
+The above functionality can be utilized within Python code like so:
+```python
+from cvdata.analyze import count_tfrecord_examples
+tfrecords_dir = "/data/animals/tfrecord"
+number_of_examples = count_tfrecord_examples(tfrecords_dir)
+print(f"Number of examples: {number_of_examples}")
+```
+For datasets containing annotation files in COCO, Darknet (YOLO), KITTI, or PASCAL 
+formats we can get the number of images per class label. For example:
+```bash
+$ cvdata_analyze --format kitti --annotations /data/scissors/kitti --images /data/scissors/images
+Label: scissors   Count: 100 
+```
+
 ## Visualize annotations
 In order to visualize images and corresponding annotations use the script 
 `cvdata/visualize.py` or the corresponding script entry point `cvdata_visualize`. 
