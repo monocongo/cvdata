@@ -172,7 +172,7 @@ def main():
     )
     args_parser.add_argument(
         "--images",
-        required=True,
+        required=False,
         type=str,
         help="images directory path",
     )
