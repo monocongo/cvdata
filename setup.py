@@ -8,7 +8,7 @@ with open(f"{parent_dir}/README.md", "r") as readme_file:
 
 setup(
     name="cvdata",
-    version="0.0.6",
+    version="0.0.7",
     author="James Adams",
     author_email="monocongo@gmail.com",
     description="Tools for creating and manipulating computer vision datasets",

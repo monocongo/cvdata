@@ -39,3 +39,20 @@ def test_count_labels(
     assert label_counts["1"] == 2
     assert label_counts["2"] == 1
     assert label_counts["3"] == 1
+
+
+# ------------------------------------------------------------------------------
+@pytest.mark.usefixtures(
+    "data_dir",
+)
+def test_count_tfrecord_examples(
+        data_dir,
+):
+    """
+    Test for the cvdata.analyze.count_tfrecord_examples() function
+
+    :param data_dir: temporary directory into which test files will be loaded
+    """
+    tfrecord_dir = os.path.join(str(data_dir), "tfrecord")
+    example_count = analyze.count_tfrecord_examples(tfrecord_dir)
+    assert example_count == 100
