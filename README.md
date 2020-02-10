@@ -95,7 +95,18 @@ $ cvdata_convert --in_format kitti --out_format tfrecord \
     --tf_label_map /data/tfrecord/label_map.pbtxt \
     --tf_shards 2
 ``` 
-
+If converting a dataset with Darknet (YOLO) format annotations we need to also 
+specify the labels file corresponding to the class indices used in the first 
+column of the Darknet annotation files:
+```bash
+$ cvdata_convert --in_format darknet --out_format tfrecord \
+    --annotations_dir train/darknet \
+    --images_dir train/images \
+    --out_dir ../tfrecord/weapons-train \
+    --tf_label_map ../tfrecord/weapons_train_tfrecord_label_map.prototxt \
+    --tf_shards 12 \
+    --darknet_labels ../darknet_class_labels.txt
+```
 ## Image format conversion
 In order to convert all images in a directory from PNG to JPG we can use the script 
 `cvdata/convert.py` or the corresponding script entry point `cvdata_convert`. For 
