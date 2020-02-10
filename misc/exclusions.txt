@@ -7,6 +7,7 @@
 00000308
 00000526
 00000686
+00000708
 00000844
 00000958
 00000961
@@ -20,6 +21,7 @@ armas_40
 armas_45
 armas_53
 armas_56
+armas_61
 armas_69
 armas_98
 armas_116
@@ -28,6 +30,7 @@ armas_128
 armas_137
 armas_165
 armas_189
+armas_195
 armas_196
 armas_210
 armas_213
@@ -45,6 +48,7 @@ armas_281
 armas_289
 armas_302
 armas_304
+armas_316
 armas_343
 armas_344
 armas_375
@@ -58,11 +62,13 @@ armas_514
 armas_510
 armas_530
 armas_547
+armas_553
 armas_566
 armas_575
 armas_594
 armas_595
 armas_596
+armas_597
 armas_602
 armas_615
 armas_616
@@ -93,6 +99,7 @@ armas_971
 armas_985
 armas_986
 armas_994
+armas_1009
 armas_1022
 armas_1035
 armas_1055
@@ -109,6 +116,7 @@ armas_1270
 armas_1287
 armas_1289
 armas_1291
+armas_1296
 armas_1328
 armas_1370
 armas_1375
@@ -121,6 +129,7 @@ armas_1462
 armas_1484
 armas_1486
 armas_1509
+armas_1537
 armas_1568
 armas_1597
 armas_1920
@@ -134,6 +143,7 @@ armas_1630
 armas_1665
 armas_1699
 armas_1707
+armas_1709
 armas_1715
 armas_1726
 armas_1728
@@ -170,6 +180,7 @@ armas_2019
 armas_2020
 armas_2023
 armas_2027
+armas_2029
 armas_2114
 armas_2121
 armas_2128
@@ -189,6 +200,7 @@ armas_2788
 armas_2794
 armas_2796
 armas_2851
+armas_2906
 armas_2950
 armas_2964
 armas_2980
@@ -197,6 +209,8 @@ a2cc37bc68140384
 a427b1ad784b0023
 25ee76521f01c377
 6b177e2de00dc561
+573faf015cbe1768
+719bfc004a70abdb
 07c3ae1c50f26533
 2918ff286008d8fe
 79a7975b3d8232b5
@@ -644,6 +658,7 @@ df5918dbb46ea2c3
 2bf68b8b2ed98310
 d37fa0ac4c62cd98
 1525f2ac9f73996a
+1a045056473e8261
 5de2172bbf9db442
 5c73ee0aeb6fef26
 0b57e2b342ae9869
@@ -673,6 +688,7 @@ def04081d0fbd8a4
 4a26b8d8f5d7c728
 88a61bbdce51d336
 258f0ce536f866bd
+b351f921d6858803
 e1b3369f18d28d21
 c0f2433ec1cc8ee3
 4c49fb2fb8999f63
