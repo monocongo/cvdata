@@ -485,7 +485,7 @@ def main():
     replacements = None
     if args["replace_labels"]:
         replacements = {}
-        for replace_labels in args["replace_labels"].split():
+        for replace_labels in args["replace_labels"]:
             from_label, to_label = replace_labels.split(":")
             replacements[from_label] = to_label
 
