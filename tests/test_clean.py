@@ -24,7 +24,13 @@ def test_clean_kitti(
     :param data_dir: temporary directory into which test files will be loaded
     """
     problems_dir = os.path.join(str(data_dir), 'problems')
-    clean.clean_kitti(str(data_dir), str(data_dir), {"pistol": "handgun"}, problems_dir=problems_dir)
+    clean.clean_kitti(
+        str(data_dir), 
+        str(data_dir), 
+        {"pistol": "handgun"}, 
+        label_keep=["handgun", "weapon"],
+        problems_dir=problems_dir
+    )
 
     # make sure that the test expected JPG image and KITTI label
     # files were correctly moved into the "problems" directory
@@ -63,7 +69,13 @@ def test_clean_pascal(
     :param data_dir: temporary directory into which test files will be loaded
     """
     problems_dir = os.path.join(str(data_dir), 'problems')
-    clean.clean_pascal(str(data_dir), str(data_dir), {"Hammer": "hammer"}, problems_dir=problems_dir)
+    clean.clean_pascal(
+        str(data_dir), 
+        str(data_dir), 
+        {"Hammer": "hammer"}, 
+        label_keep=["Hammer"],
+        problems_dir=problems_dir
+    )
 
     # make sure that the original PNG image was converted to JPG
     converted_image_path = os.path.join(str(data_dir), 'beeeab1b6768f8fc.jpg')
