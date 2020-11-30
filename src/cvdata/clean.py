@@ -76,6 +76,7 @@ def clean_darknet(
         images_dir: str,
         label_replacements: Dict,
         label_removals: List[str] = None,
+        label_keep: List[str] = None,
         problems_dir: str = None,
 ):
     """
@@ -112,6 +113,10 @@ def clean_darknet(
 
             # skip rewriting this line if it's a label we want removed
             if (label_removals is not None) and (label in label_removals):
+                continue
+
+            # skip rewriting this line if it's a label we do not want to keep
+            if (label_keep is not None) and (label not in label_keep):
                 continue
 
             # get the bounding box coordinates
@@ -175,6 +180,7 @@ def clean_kitti(
         images_dir: str,
         label_replacements: Dict = None,
         label_removals: List[str] = None,
+        label_keep: List[str] = None,
         problems_dir: str = None,
 ):
     """
@@ -216,6 +222,10 @@ def clean_kitti(
 
             # skip rewriting this line if it's a label we want removed
             if (label_removals is not None) and (label in label_removals):
+                continue
+
+            # skip rewriting this line if it's a label we do not want to keep
+            if (label_keep is not None) and (label not in label_keep):
                 continue
 
             truncated = parts[1]
@@ -314,6 +324,7 @@ def clean_pascal(
         images_dir: str,
         label_replacements: Dict = None,
         label_removals: List[str] = None,
+        label_keep: List[str] = None,
         problems_dir: str = None,
 ):
     """
@@ -378,6 +389,13 @@ def clean_pascal(
                 # replace all bounding box labels if specified in the replacement dictionary
                 name = obj.find("name")
                 if (name is None) or ((label_removals is not None) and (name.text in label_removals)):
+                    # drop the bounding box
+                    parent = obj.getparent()
+                    parent.remove(obj)
+                    # move on, nothing more to do for this box
+                    continue
+                # skip rewriting this line if it's a label we do not want to keep
+                elif (name is None) or ((label_keep is not None) and (name.text not in label_keep)):
                     # drop the bounding box
                     parent = obj.getparent()
                     parent.remove(obj)
@@ -479,6 +497,13 @@ def main():
         nargs="*",
         help="labels of bounding boxes to be removed",
     )
+    args_parser.add_argument(
+        "--keep_labels",
+        required=False,
+        type=str,
+        nargs="*",
+        help="labels of bounding boxes to be removed",
+    )
     args = vars(args_parser.parse_args())
 
     # make a dictionary of labels to be replaced, if provided
@@ -505,7 +530,8 @@ def main():
             args["images_dir"],
             replacements,
             args["remove_labels"],
-            args["problems_dir"],
+            args["keep_labels"],
+            args["problems_dir"],            
         )
 
 
