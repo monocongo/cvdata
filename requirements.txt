@@ -4,7 +4,7 @@ attrs==19.2.0
 backcall==0.1.0
 bleach==3.3.0
 cachetools==4.0.0
-certifi==2022.12.7
+certifi==2023.7.22
 chardet==3.0.4
 contextlib2==0.6.0
 cycler==0.10.0
