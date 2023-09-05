@@ -256,11 +256,11 @@ def resize_image_label(
 
             # clip to one less pixel than the dimension size in
             # case the scaling takes us all the way to the edge
-            new_xmax = min((new_width - 1), int(int(xmax.text) * scale_x))
-            new_ymax = min((new_height - 1), int(int(ymax.text) * scale_y))
+            new_xmax = min((new_width - 1), int(int(float(xmax.text)) * scale_x))
+            new_ymax = min((new_height - 1), int(int(float(ymax.text)) * scale_y))
 
-            xmin.text = str(int(int(xmin.text) * scale_x))
-            ymin.text = str(int(int(ymin.text) * scale_y))
+            xmin.text = str(int(int(float(xmin.text)) * scale_x))
+            ymin.text = str(int(int(float(ymin.text)) * scale_y))
             xmax.text = str(new_xmax)
             ymax.text = str(new_ymax)
 
